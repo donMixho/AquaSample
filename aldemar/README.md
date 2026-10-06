@@ -64,7 +64,7 @@ com.aldemar.aquasample/
 flowchart TD
     subgraph Terreno
         A[Operador en Embarcación / Pontón] -->|Paso 1| B[Datos de Centro, Tren y Línea]
-        B -->|Paso 2| C[Captura o Selección de Foto]
+        B -->|Paso 2| C[Captura de Foto con Cámara]
         C -->|Paso 3| D[Conteo numérico de choritos + Notas]
         D -->|Paso 4| E[Confirmación en Resumen]
     end
@@ -80,6 +80,16 @@ flowchart TD
         I -->|Actualiza estado| F
     end
 ```
+
+## 📸 Captura de Evidencia Fotográfica
+
+En el Paso 2 del asistente, el operador captura la evidencia directamente con la cámara nativa del dispositivo mediante `ActivityResultContracts.TakePicture()`. Se reemplazó la selección desde la galería para agilizar el trabajo en terreno y evitar asociar por error una imagen que no corresponda a la muestra.
+
+El flujo conserva los datos del Paso 1 —Centro, Tren y Línea— mientras Android abre la cámara. El `SampleCreateViewModel` mantiene el URI temporal de la fotografía en su `StateFlow`, junto con el resto del estado del formulario, de modo que la captura no borre los datos de los pasos anteriores al regresar a la aplicación.
+
+Al volver de la cámara, la pantalla presenta una vista previa. El operador puede **Confirmar foto** para incorporarla a la muestra o **Volver a tomar** para descartar la captura temporal y abrir nuevamente la cámara. Solo la imagen confirmada pasa a ser la evidencia final del formulario.
+
+Para compartir la imagen con la cámara se utiliza `FileProvider`, que entrega un URI seguro sin exponer directamente una ruta del sistema de archivos. La foto confirmada se guarda en el almacenamiento interno de la aplicación y se identifica con el formato `dd-MM-yyyy_HH-mm.jpg`; el guion bajo separa la fecha de la hora para mantener un nombre válido en el sistema de archivos.
 
 ---
 

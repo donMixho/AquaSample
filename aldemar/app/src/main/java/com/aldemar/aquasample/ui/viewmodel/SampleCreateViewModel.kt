@@ -25,7 +25,9 @@ data class CreateSampleUiState(
     val sampleDate: String = "",
     val sectionLengthMeters: String = "1.0",
     val operatorName: String = "Carlos Delgado",
+    val pendingPhotoUri: String? = null,
     val photoPath: String? = null,
+    val photoErrorMessage: String? = null,
     val musselCount: Int = 0,
     val observations: String = "",
     val isSaving: Boolean = false,
@@ -88,7 +90,37 @@ class SampleCreateViewModel(
     }
 
     fun updatePhotoPath(path: String?) {
-        _uiState.value = _uiState.value.copy(photoPath = path)
+        _uiState.value = _uiState.value.copy(
+            pendingPhotoUri = null,
+            photoPath = path,
+            photoErrorMessage = null
+        )
+    }
+
+    fun setPendingPhotoUri(uri: String) {
+        _uiState.value = _uiState.value.copy(
+            pendingPhotoUri = uri,
+            photoErrorMessage = null
+        )
+    }
+
+    fun confirmPhoto(path: String) {
+        _uiState.value = _uiState.value.copy(
+            pendingPhotoUri = null,
+            photoPath = path,
+            photoErrorMessage = null
+        )
+    }
+
+    fun discardPendingPhoto() {
+        _uiState.value = _uiState.value.copy(
+            pendingPhotoUri = null,
+            photoErrorMessage = null
+        )
+    }
+
+    fun setPhotoError(message: String) {
+        _uiState.value = _uiState.value.copy(photoErrorMessage = message)
     }
 
     /**
