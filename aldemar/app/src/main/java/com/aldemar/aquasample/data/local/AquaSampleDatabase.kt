@@ -8,6 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.aldemar.aquasample.data.local.dao.SampleDao
 import com.aldemar.aquasample.data.local.entity.CenterEntity
 import com.aldemar.aquasample.data.local.entity.SampleEntity
+import com.aldemar.aquasample.data.model.UserRole
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "637208800417",
+    "project_id": "aquasample-bc64b",
+    "storage_bucket": "aquasample-bc64b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:637208800417:android:c282949ffc6941cbec94e0",
+        "android_client_info": {
+          "package_name": "com.aldemar.aquasample"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDefeD--V0mgazeoRJEH-fKlzqUJjO5tAg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+

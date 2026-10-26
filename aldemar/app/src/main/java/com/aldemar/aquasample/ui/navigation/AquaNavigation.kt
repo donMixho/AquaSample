@@ -54,8 +54,9 @@ fun AquaNavigation(
         // ==========================================
         composable(Screen.Login.route) {
             LoginScreen(
-                onLoginSuccess = { role, name ->
-                    authViewModel.login(role, name)
+                authUiState = authUiState,
+                authViewModel = authViewModel,
+                onLoginSuccess = { _, name ->
                     sampleCreateViewModel.setOperator(name)
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }

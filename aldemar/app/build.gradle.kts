@@ -3,16 +3,17 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
     namespace = "com.aldemar.aquasample"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.aldemar.aquasample"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -69,4 +70,9 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Firebase
+    implementation(dependencyNotation = platform("com.google.firebase:firebase-bom:33.9.0"))
+    implementation(dependencyNotation = "com.google.firebase:firebase-analytics")
+    implementation(dependencyNotation = "com.google.firebase:firebase-auth")
 }
