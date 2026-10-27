@@ -1,6 +1,7 @@
 package com.aldemar.aquasample.ui.screens.sample
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,7 +31,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,7 +69,7 @@ fun CountObservationsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToSummary: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -153,10 +154,10 @@ fun CountObservationsScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Botones ergonómicos de ajuste rápido
+                    // Botones accesibles incluso en pantallas pequeñas.
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FilledTonalButton(
                             onClick = { viewModel.incrementCount(-10) },
@@ -201,11 +202,10 @@ fun CountObservationsScreen(
 
                     // Entrada de texto alternativa para valores grandes
                     OutlinedTextField(
-                        value = if (uiState.musselCount == 0) "" else uiState.musselCount.toString(),
-                        onValueChange = {
-                            val parsed = it.toIntOrNull() ?: 0
-                            viewModel.setCount(parsed)
-                        },
+                        value = uiState.countText,
+                        onValueChange = viewModel::updateCount,
+                        isError = uiState.fieldErrors.containsKey("count"),
+                        supportingText = { Text(uiState.fieldErrors["count"] ?: "Se permite cero si no hay individuos en el tramo.") },
                         label = { Text("O ingrese número exacto") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
@@ -263,7 +263,7 @@ fun CountObservationsScreen(
 
             // Botón hacia el paso final de confirmación
             Button(
-                onClick = onNavigateToSummary,
+                onClick = { if (viewModel.validateCount()) onNavigateToSummary() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),

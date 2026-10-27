@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
                     color = AquaBackground
                 ) {
                     // Contenedor de navegación principal con todas las rutas y pantallas
-                    AquaNavigation(repository = repository)
+                    AquaNavigation(realRepository = repository)
                 }
             }
         }

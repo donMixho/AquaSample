@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-10-27T02:39:10.482Z" hostname="MATHY_MJ02" time="0.362">
+  <properties/>
+  <testcase name="releaseCannotEnterDemoOrRestoreSavedDemo" classname="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" time="0.324"/>
+  <testcase name="invalidCredentialsNeverReachProvider" classname="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" time="0.007"/>
+  <testcase name="doubleClickSendsOnlyOneLoginAndBlocksDemoWhilePending" classname="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" time="0.009"/>
+  <testcase name="loginUsesVerifiedIdentityAndTrimsEmail" classname="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" time="0.004"/>
+  <testcase name="demoStateRestoresAndLogoutRemovesIt" classname="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" time="0.003"/>
+  <testcase name="failedLoginClearsSessionAndCanRetry" classname="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" time="0.006"/>
+  <testcase name="onlyExactTrustedSupervisorClaimGrantsPermission" classname="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" time="0.002"/>
+  <testcase name="registrationRequiresNameAndUsesProviderRole" classname="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" time="0.002"/>
+  <testcase name="supervisorRoleComesFromProviderAndRestores" classname="com.aldemar.aquasample.ui.viewmodel.AuthViewModelTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

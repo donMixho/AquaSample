@@ -1,0 +1,26 @@
+name: Android
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aldemar
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - run: chmod +x gradlew
+      - run: ./gradlew testDebugUnitTest assembleDebug assembleDebugAndroidTest lintDebug assembleRelease --max-workers=2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-results
+          path: |
+            aldemar/app/build/reports
+            aldemar/app/build/outputs/apk/debug

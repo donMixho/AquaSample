@@ -24,16 +24,23 @@ class AquaSampleApp : Application() {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Instancia única (lazy) de la base de datos Room SQLite
-    val database by lazy { AquaSampleDatabase.getDatabase(this, applicationScope) }
+    val database by lazy { AquaSampleDatabase.getDatabase(this) }
 
     // Repositorio central que conecta los DAOs con la lógica de negocio y los ViewModels
     val repository by lazy { SampleRepository(database.sampleDao()) }
+    val demoDatabase by lazy {
+        androidx.room.Room.databaseBuilder(this, AquaSampleDatabase::class.java, "aquasample_demo.db").build()
+    }
+    val demoRepository by lazy { SampleRepository(demoDatabase.sampleDao()) }
+
+    val photoStorage by lazy { com.aldemar.aquasample.data.repository.PhotoStorage(this) }
 
     override fun onCreate() {
         super.onCreate()
         // Asegura que existan centros de cultivo y muestras demo en la BD local
         applicationScope.launch {
-            repository.ensureInitialData()
+            repository.ensureInitialData(includeDemoSamples = false)
+            if (BuildConfig.DEBUG) demoRepository.ensureInitialData()
         }
     }
 }

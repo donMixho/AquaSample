@@ -1,118 +1,57 @@
-# AquaSample 💧
+# AquaSample
 
-**AquaSample** es una aplicación móvil desarrollada como proyecto universitario, orientada a digitalizar y estandarizar el proceso de toma, registro y revisión de muestras de agua en campo, reemplazando el uso de bitácoras físicas y formularios en papel.
+AquaSample es una aplicación Android del proyecto ALDEMAR, desarrollada para la asignatura Desarrollo de Aplicaciones Móviles (DSY1105). Permite registrar muestras de cultivo de choritos, guardar fotografías y consultar el historial de muestreos en el teléfono.
 
----
+## Integrantes
 
-## 1. Problema y usuarios reales
+- Matías Mena
+- Antoine Rivas
+- Leandro Ruiz
+- Franco Ruz
 
-Los equipos de campo encargados de la toma de muestras de agua (potabilización, control de calidad, saneamiento ambiental) suelen registrar sus observaciones en papel o en formularios desconectados, lo que genera:
+## Funcionalidades
 
-- Pérdida o ilegibilidad de datos.
-- Falta de trazabilidad entre la muestra tomada y su revisión posterior.
-- Demoras en la validación por parte de un supervisor.
+- Registro e inicio de sesión con correo y contraseña mediante Firebase.
+- Registro de muestras con centro, tren, línea, longitud, conteo y observaciones.
+- Fotografía con cámara o selección desde la galería.
+- Validaciones con mensajes antes de avanzar y guardar.
+- Historial con búsqueda, filtros y detalle de cada muestra.
+- Revisión de muestras por un supervisor; observar una muestra exige indicar el motivo.
+- Persistencia local con Room y recuperación del formulario ante recreación de la pantalla.
 
-**Usuarios reales identificados:**
+## Cómo ejecutar
 
-- **Operador/técnico de campo:** toma la muestra, registra el conteo, observaciones y evidencia fotográfica.
-- **Supervisor:** revisa, valida o rechaza las muestras cargadas por los operadores.
+1. Abre la carpeta `aldemar` en Android Studio.
+2. Usa el JDK integrado compatible con Gradle (se comprobó con JDK 21) y el SDK Android 35.
+3. Sincroniza Gradle. La primera sincronización necesita Internet.
+4. Conecta un teléfono con Android 7.0 o superior, activa Depuración USB y acepta la autorización. También puedes usar un emulador ya instalado.
+5. Selecciona el dispositivo y ejecuta el módulo `app` con Run.
 
-El detalle completo del problema, el contexto y la justificación del proyecto se encuentra documentado en:
-📄 [`docs/Evidencia_Clase_01_MVP_EquipoXX.docx`](docs/Evidencia_Clase_01_MVP_EquipoXX.docx)
+La ruta del SDK se configura localmente en `local.properties` y no se incluye en el repositorio.
 
----
+## Acceso
 
-## 2. Requerimientos y definición del MVP
+El acceso real usa Firebase y requiere su configuración activa. Las cuentas nuevas ingresan como Operador; el administrador asigna el permiso de Supervisor. Los detalles están en [Acceso Firebase](docs/ACCESO_FIREBASE.md).
 
-Los requerimientos funcionales y no funcionales del sistema, junto con el alcance definido para el **Producto Mínimo Viable (MVP)**, están especificados en la evidencia de la Clase 1:
+La versión debug también permite probar sin cuentas mediante **Ingresar en Modo Demostración (Offline)**. En este modo se puede elegir un perfil y se trabaja con una base de datos separada, con centros y muestras de ejemplo. El encabezado identifica la demostración. Este acceso no está disponible en release.
 
-📄 [`docs/Evidencia_Clase_01_MVP_EquipoXX.docx`](docs/Evidencia_Clase_01_MVP_EquipoXX.docx)
+## Uso básico
 
-Dicho documento cubre:
+Como operador, crea una muestra, completa los datos, agrega una foto y registra el conteo. Revisa el resumen y guarda. Busca el registro en el historial para abrir su detalle.
 
-- Requerimientos funcionales (registro de muestras, conteo, fotografía, historial, revisión de supervisor, etc.).
-- Requerimientos no funcionales (usabilidad, disponibilidad, seguridad de datos, entre otros).
-- Alcance y límites definidos para el MVP.
+Como supervisor, abre una muestra y elige Validar u Observar. Si la observas, escribe el motivo. La revisión se realiza en el mismo dispositivo donde se guardó la muestra.
 
----
+## Tecnologías y alcance
 
-## 3. Historias de usuario y alcance
+Kotlin, Jetpack Compose, Material 3, Navigation, ViewModel, StateFlow, Room y Firebase Authentication, con organización MVVM.
 
-Las historias de usuario que guiaron el diseño del flujo y las pantallas del MVP, junto con el alcance funcional resultante, se documentan en:
+Las muestras y fotos se guardan localmente; todavía no se sincronizan entre teléfonos. La carpeta `AquaSample_DB` contiene los scripts MySQL preparados por el equipo, pero esa base aún no está conectada a la app. El alcance de seguridad y las tareas pendientes se detallan en [Integración](docs/INTEGRACION.md).
 
-📄 [`docs/Actividad_Clase_2_Flujo_UML_Diseno_Interfaces.docx`](docs/Actividad_Clase_2_Flujo_UML_Diseno_Interfaces.docx)
+## Documentación
 
----
-
-## 4. Diagrama de Actividad UML (Flujo de usuario)
-
-El diagrama de actividad UML que modela el flujo de uso de la aplicación —desde el login del operador hasta la revisión final del supervisor— se encuentra incluido en:
-
-📄 [`docs/Actividad_Clase_2_Flujo_UML_Diseno_Interfaces.docx`](docs/Actividad_Clase_2_Flujo_UML_Diseno_Interfaces.docx)
-
----
-
-## 5. Diseño de interfaces e identidad visual (Material Design 3)
-
-El diseño visual de AquaSample está construido sobre los lineamientos de **Material Design 3**, con una paleta de colores, tipografía (Inter) y tokens de diseño definidos en el sistema:
-
-🎨 [`AquaSample_MVP_Stitch/MVP/corporate_precision_system/DESIGN.md`](AquaSample_MVP_Stitch/MVP/corporate_precision_system/DESIGN.md)
-
-### Identidad visual (logo e ícono)
-
-| Logo | Ícono de app |
-|------|--------------|
-| ![Logo AquaSample](docs/diseno/logo.png) | ![Ícono AquaSample](docs/diseno/aquaicon.png) |
-
-### Mockups de pantallas (MVP)
-
-El detalle del diseño de interfaces también se documenta en [`docs/Actividad_Clase_2_Flujo_UML_Diseno_Interfaces.docx`](docs/Actividad_Clase_2_Flujo_UML_Diseno_Interfaces.docx). Las pantallas prototipadas (HTML + capturas) del MVP son:
-
-| Pantalla | Descripción | Vista previa (HTML) |
-|----------|-------------|----------------------|
-| Login | Inicio de sesión del operador | [`login.html`](AquaSample_MVP_Stitch/MVP/aquamuestra_login/login.html) |
-| Nueva muestra | Registro de una nueva muestra de agua | [`nueva_muestra.html`](AquaSample_MVP_Stitch/MVP/aquamuestra_nueva_muestra/nueva_muestra.html) |
-| Conteo y observaciones | Registro de conteo y observaciones de la muestra | [`conteo.html`](AquaSample_MVP_Stitch/MVP/aquamuestra_conteo_y_observaciones/conteo.html) |
-| Fotografía de muestra | Captura de evidencia fotográfica | [`fotografia.html`](AquaSample_MVP_Stitch/MVP/aquamuestra_fotograf_a_de_muestra/fotografia.html) |
-| Resumen de muestra | Resumen previo al envío para revisión | [`resumen.html`](AquaSample_MVP_Stitch/MVP/aquamuestra_resumen_de_muestra/resumen.html) |
-| Historial de muestras | Listado histórico de muestras registradas | [`historial.html`](AquaSample_MVP_Stitch/MVP/aquamuestra_historial_de_muestras/historial.html) |
-| Revisión del supervisor | Validación/rechazo de muestras por el supervisor | [`revision.html`](AquaSample_MVP_Stitch/MVP/aquamuestra_revisi_n_supervisor/revision.html) |
-
-> Cada carpeta de pantalla contiene además una imagen `.png` con la captura estática del diseño correspondiente.
-
----
-
-## 6. Evidencias documentales (resumen de rutas)
-
-| Evidencia | Ruta |
-|-----------|------|
-| Problema, usuarios, requerimientos y MVP (Clase 1) | [`docs/Evidencia_Clase_01_MVP_EquipoXX.docx`](docs/Evidencia_Clase_01_MVP_EquipoXX.docx) |
-| Historias de usuario, UML y diseño de interfaces (Clase 2) | [`docs/Actividad_Clase_2_Flujo_UML_Diseno_Interfaces.docx`](docs/Actividad_Clase_2_Flujo_UML_Diseno_Interfaces.docx) |
-| Sistema de diseño (Material Design 3) | [`AquaSample_MVP_Stitch/MVP/corporate_precision_system/DESIGN.md`](AquaSample_MVP_Stitch/MVP/corporate_precision_system/DESIGN.md) |
-| Identidad visual (logo e ícono) | [`docs/diseno/`](docs/diseno/) |
-| Prototipos de pantallas del MVP (HTML + PNG) | [`AquaSample_MVP_Stitch/MVP/`](AquaSample_MVP_Stitch/MVP/) |
-
----
-
-## Estructura del repositorio
-
-```
-AquaSample/
-├── docs/
-│   ├── Evidencia_Clase_01_MVP_EquipoXX.docx
-│   ├── Actividad_Clase_2_Flujo_UML_Diseno_Interfaces.docx
-│   └── diseno/
-│       ├── logo.png
-│       └── aquaicon.png
-└── AquaSample_MVP_Stitch/
-    └── MVP/
-        ├── aquamuestra_login/
-        ├── aquamuestra_nueva_muestra/
-        ├── aquamuestra_conteo_y_observaciones/
-        ├── aquamuestra_fotograf_a_de_muestra/
-        ├── aquamuestra_resumen_de_muestra/
-        ├── aquamuestra_historial_de_muestras/
-        ├── aquamuestra_revisi_n_supervisor/
-        └── corporate_precision_system/
-            └── DESIGN.md
-```
+- [Estructura del código](docs/ESTRUCTURA.md)
+- [Resultados de verificación](VERIFICACION.md)
+- [Guía de presentación y defensa](docs/GUIA_PRESENTACION.md)
+- [Pruebas manuales](docs/PRUEBAS_MANUALES.md)
+- [Cambios de integración](docs/INTEGRACION.md)
+- [Diseños y evidencias originales](docs)

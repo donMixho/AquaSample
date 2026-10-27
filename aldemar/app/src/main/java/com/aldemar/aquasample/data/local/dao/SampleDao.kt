@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Transaction
 import com.aldemar.aquasample.data.local.entity.CenterEntity
 import com.aldemar.aquasample.data.local.entity.SampleEntity
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,20 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface SampleDao {
+    @Query("SELECT id FROM samples WHERE code = :code LIMIT 1")
+    suspend fun findIdByCode(code: String): Long?
+
+    /** A retry of the same draft must never create a second sample. */
+    @Transaction
+    suspend fun insertSampleOnce(sample: SampleEntity): Long =
+        findIdByCode(sample.code) ?: insertSample(sample)
+
+    @Transaction
+    suspend fun seedIfEmpty(centers: List<CenterEntity>, samples: List<SampleEntity>) {
+        if (getCenterCount() == 0) insertCenters(centers)
+        if (getSampleCount() == 0) insertSamples(samples)
+    }
+
 
     /**
      * Obtiene el listado completo de muestras ordenadas cronológicamente (las más recientes primero).

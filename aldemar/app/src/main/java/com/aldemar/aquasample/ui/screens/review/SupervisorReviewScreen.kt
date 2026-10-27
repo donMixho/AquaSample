@@ -31,7 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.aldemar.aquasample.data.model.UserRole
 import com.aldemar.aquasample.data.model.SampleStatus
 import com.aldemar.aquasample.ui.components.AquaTopBar
 import com.aldemar.aquasample.ui.components.StatusBadge
@@ -77,7 +78,7 @@ fun SupervisorReviewScreen(
     viewModel: SupervisorReviewViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // Carga asíncrona de la muestra al ingresar a la pantalla
     LaunchedEffect(sampleId) {
@@ -103,7 +104,10 @@ fun SupervisorReviewScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Cargando muestra...", color = AquaTextSecondary)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(if (uiState.isLoading) "Cargando muestra…" else uiState.errorMessage ?: "Muestra no encontrada.", color = AquaTextSecondary)
+                    if (!uiState.isLoading) Button(onClick = { viewModel.loadSample(sampleId) }) { Text("Reintentar") }
+                }
             }
         } else {
             Column(
@@ -128,6 +132,7 @@ fun SupervisorReviewScreen(
                         ) {
                             Text(
                                 text = sample.code,
+                                modifier = Modifier.weight(1f).padding(end = 8.dp),
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = AquaPrimary
@@ -190,6 +195,17 @@ fun SupervisorReviewScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                sample.supervisorComment?.let {
+                    Text("Último dictamen: $it", color = AquaTextPrimary)
+                    Text("Supervisor: ${sample.supervisorName.orEmpty()}", color = AquaTextSecondary)
+                }
+                uiState.errorMessage?.let {
+                    Text(it, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                }
+                if (authUiState.currentRole != UserRole.SUPERVISOR) {
+                    Text("Consulta de la muestra. El dictamen corresponde al supervisor.", color = AquaTextSecondary)
+                }
+                if (authUiState.currentRole == UserRole.SUPERVISOR) {
                 // Panel de Decisión y Dictamen del Supervisor
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -215,6 +231,7 @@ fun SupervisorReviewScreen(
                         // Campo de comentario o instrucción técnica
                         OutlinedTextField(
                             value = uiState.supervisorComment,
+                            enabled = !uiState.isSaving,
                             onValueChange = { viewModel.updateComment(it) },
                             label = { Text("Comentario o Instrucción Técnica") },
                             placeholder = { Text("Ej: Conteo consistente con la curva de crecimiento...") },
@@ -241,9 +258,11 @@ fun SupervisorReviewScreen(
                                     viewModel.applyReview(
                                         newStatus = SampleStatus.OBSERVADO,
                                         supervisorName = authUiState.currentUserName,
+                                        role = authUiState.currentRole,
                                         onSuccess = onNavigateBack
                                     )
                                 },
+                                enabled = !uiState.isSaving,
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(48.dp),
@@ -270,9 +289,11 @@ fun SupervisorReviewScreen(
                                     viewModel.applyReview(
                                         newStatus = SampleStatus.VALIDADO,
                                         supervisorName = authUiState.currentUserName,
+                                        role = authUiState.currentRole,
                                         onSuccess = onNavigateBack
                                     )
                                 },
+                                enabled = !uiState.isSaving,
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(48.dp),
@@ -294,6 +315,7 @@ fun SupervisorReviewScreen(
                             }
                         }
                     }
+                }
                 }
             }
         }

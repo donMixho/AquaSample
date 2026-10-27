@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -39,7 +41,11 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,14 +91,23 @@ fun HomeScreen(
     onNavigateToReview: (Long) -> Unit,
     onLogout: () -> Unit
 ) {
-    val samples by viewModel.filteredSamples.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val selectedStatus by viewModel.selectedStatusFilter.collectAsState()
+    val listState by viewModel.uiState.collectAsStateWithLifecycle()
+    val samples = listState.samples
+    val centers by viewModel.centers.collectAsStateWithLifecycle()
+    val selectedCenter by viewModel.selectedCenterFilter.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val selectedStatus by viewModel.selectedStatusFilter.collectAsStateWithLifecycle()
 
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(message) {
+        message?.let { snackbar.showSnackbar(it); viewModel.consumeMessage() }
+    }
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             AquaTopBar(
-                title = "AquaSample · ALDEMAR",
+                title = if (authUiState.isDemo) "AquaSample · DEMOSTRACIÓN" else "AquaSample · ALDEMAR",
                 canNavigateBack = false,
                 actions = {
                     Row(
@@ -223,6 +238,17 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { FilterChip(selected = selectedCenter == null,
+                    onClick = { viewModel.setCenterFilter(null) }, label = { Text("Todos los centros") }) }
+                items(centers.distinctBy { it.name }, key = { it.name }) { center ->
+                    FilterChip(selected = selectedCenter == center.name,
+                        onClick = { viewModel.setCenterFilter(center.name) }, label = { Text(center.name) })
+                }
+            }
+            if (searchQuery.isNotBlank() || selectedStatus != null || selectedCenter != null) {
+                TextButton(onClick = viewModel::clearFilters) { Text("Limpiar búsqueda y filtros") }
+            }
             // Indicador de cantidad de resultados
             Text(
                 text = "${samples.size} muestras registradas en el historial local",
@@ -233,7 +259,12 @@ fun HomeScreen(
             )
 
             // Listado de Tarjetas de Muestra
-            if (samples.isEmpty()) {
+            if (listState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+            } else if (listState.error != null) {
+                Text(listState.error.orEmpty(), color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                TextButton(onClick = viewModel::retryLoad) { Text("Reintentar") }
+            } else if (samples.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -254,7 +285,6 @@ fun HomeScreen(
                     items(samples, key = { it.id }) { sample ->
                         SampleCardItem(
                             sample = sample,
-                            isSupervisor = authUiState.currentRole == UserRole.SUPERVISOR,
                             onClick = {
                                 onNavigateToReview(sample.id)
                             }
@@ -275,7 +305,6 @@ fun HomeScreen(
 @Composable
 fun SampleCardItem(
     sample: SampleEntity,
-    isSupervisor: Boolean,
     onClick: () -> Unit
 ) {
     Card(
@@ -295,6 +324,8 @@ fun SampleCardItem(
             ) {
                 Text(
                     text = sample.code,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = AquaPrimary

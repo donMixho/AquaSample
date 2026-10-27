@@ -18,6 +18,8 @@ import kotlinx.coroutines.withContext
  */
 class SampleRepository(private val sampleDao: SampleDao) {
 
+    suspend fun findIdByCode(code: String): Long? = sampleDao.findIdByCode(code)
+
     // Flujo continuo de todas las muestras para el listado reactivo
     val allSamples: Flow<List<SampleEntity>> = sampleDao.getAllSamples()
 
@@ -45,7 +47,7 @@ class SampleRepository(private val sampleDao: SampleDao) {
      */
     suspend fun insertSample(sample: SampleEntity): Long {
         return withContext(Dispatchers.IO) {
-            sampleDao.insertSample(sample)
+            sampleDao.insertSampleOnce(sample)
         }
     }
 
@@ -71,18 +73,14 @@ class SampleRepository(private val sampleDao: SampleDao) {
      * Método de seguridad para asegurar que siempre haya centros y muestras cargadas,
      * incluso si la app se ejecuta por primera vez en un emulador recién creado.
      */
-    suspend fun ensureInitialData() {
+    suspend fun ensureInitialData(includeDemoSamples: Boolean = true) {
         withContext(Dispatchers.IO) {
-            if (sampleDao.getCenterCount() == 0) {
                 val centers = listOf(
                     CenterEntity(name = "Centro Huar", location = "Isla Huar - Calbuco"),
                     CenterEntity(name = "Centro Chidhuapi", location = "Canal Chidhuapi"),
                     CenterEntity(name = "Centro Calbuco", location = "Seno de Reloncaví"),
                     CenterEntity(name = "Centro Quellón", location = "Golfo Corcovado - Chiloé")
                 )
-                sampleDao.insertCenters(centers)
-            }
-            if (sampleDao.getSampleCount() == 0) {
                 val samples = listOf(
                     SampleEntity(
                         code = "MUE-2026-001",
@@ -130,8 +128,7 @@ class SampleRepository(private val sampleDao: SampleDao) {
                         createdAt = System.currentTimeMillis()
                     )
                 )
-                sampleDao.insertSamples(samples)
-            }
+                sampleDao.seedIfEmpty(centers, if (includeDemoSamples) samples else emptyList())
         }
     }
 }
