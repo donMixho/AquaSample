@@ -1,180 +1,109 @@
 package com.aldemar.aquasample.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.aldemar.aquasample.BuildConfig
 import com.aldemar.aquasample.data.model.UserRole
-import com.google.firebase.auth.FirebaseAuth
+import com.aldemar.aquasample.data.repository.AuthAccount
+import com.aldemar.aquasample.data.repository.AuthRepository
+import com.aldemar.aquasample.data.repository.FirebaseAuthRepository
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.FirebaseAuthException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
-/**
- * Estado inmutable de la sesión del usuario.
- */
 data class AuthUiState(
     val isLoggedIn: Boolean = false,
     val currentRole: UserRole = UserRole.OPERADOR,
-    val currentUserName: String = UserRole.OPERADOR.defaultUser,
+    val currentUserName: String = "",
     val userEmail: String? = null,
+    val userId: String? = null,
+    val isDemo: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
 
-/**
- * ViewModel encargado de la sesión y perfil activo con autenticación de Firebase.
- */
-class AuthViewModel : ViewModel() {
+class AuthViewModel(
+    private val savedState: SavedStateHandle,
+    private val repository: AuthRepository,
+    private val demoEnabled: Boolean
+) : ViewModel() {
+    constructor(savedState: SavedStateHandle) : this(savedState, FirebaseAuthRepository(), BuildConfig.DEBUG)
 
-    private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
-
-    private val _uiState = MutableStateFlow(AuthUiState())
-    val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(AuthUiState(isLoading = true))
+    val uiState = _uiState.asStateFlow()
 
     init {
-        // Verificar si existe una sesión activa de Firebase al iniciar
-        try {
-            val currentUser = auth.currentUser
-            if (currentUser != null) {
-                _uiState.value = AuthUiState(
-                    isLoggedIn = true,
-                    currentRole = UserRole.OPERADOR,
-                    currentUserName = currentUser.displayName ?: currentUser.email?.substringBefore("@") ?: UserRole.OPERADOR.defaultUser,
-                    userEmail = currentUser.email
-                )
+        if (demoEnabled && savedState.get<Boolean>("demo") == true) {
+            _uiState.value = AuthUiState(isLoggedIn = true, isDemo = true,
+                currentUserName = savedState["demoName"] ?: "Demostración",
+                currentRole = if (savedState.get<String>("demoRole") == "SUPERVISOR") UserRole.SUPERVISOR else UserRole.OPERADOR)
+        } else viewModelScope.launch {
+            try {
+                _uiState.value = repository.restore()?.toState() ?: AuthUiState()
+            } catch (e: CancellationException) { throw e
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState(errorMessage = "No se pudo recuperar la sesión. Inicia sesión nuevamente.")
             }
-        } catch (e: Exception) {
-            // Firebase podría no estar completamente configurado en entornos de prueba
-            e.printStackTrace()
         }
     }
 
-    /**
-     * Inicia sesión con Firebase Authentication (Email/Password).
-     */
-    fun loginWithFirebase(
-        email: String,
-        pass: String,
-        role: UserRole,
-        customName: String?,
-        onSuccess: (UserRole, String) -> Unit
-    ) {
-        if (email.isBlank() || pass.isBlank()) {
-            _uiState.value = _uiState.value.copy(
-                errorMessage = "Por favor ingrese correo electrónico y contraseña."
-            )
-            return
-        }
+    fun loginWithFirebase(email: String, pass: String) = authenticate(email, pass, null, false)
+    fun registerWithFirebase(email: String, pass: String, customName: String?) = authenticate(email, pass, customName, true)
 
-        _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-
-        auth.signInWithEmailAndPassword(email.trim(), pass)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val firebaseUser = auth.currentUser
-                    val displayName = firebaseUser?.displayName
-                    val finalName = when {
-                        !customName.isNullOrBlank() -> customName
-                        !displayName.isNullOrBlank() -> displayName
-                        else -> email.substringBefore("@")
+    private fun authenticate(email: String, pass: String, name: String?, register: Boolean) {
+        if (_uiState.value.isLoading || _uiState.value.isLoggedIn) return
+        val error = AuthValidation.validate(email, pass, name, register)
+        if (error != null) { _uiState.value = _uiState.value.copy(errorMessage = error); return }
+        _uiState.value = AuthUiState(isLoading = true)
+        viewModelScope.launch {
+            try {
+                val account = if (register) repository.register(email.trim(), pass, name!!.trim())
+                    else repository.login(email.trim(), pass)
+                savedState["demo"] = false
+                _uiState.value = account.toState()
+            } catch (e: CancellationException) { throw e
+            } catch (e: Exception) {
+                runCatching { repository.logout() }
+                val message = when (e) {
+                    is FirebaseNetworkException -> "No hay conexión con el servicio. Revisa Internet y reintenta."
+                    is FirebaseAuthException -> when (e.errorCode) {
+                        "ERROR_EMAIL_ALREADY_IN_USE" -> "Este correo ya tiene una cuenta. Intenta iniciar sesión."
+                        "ERROR_OPERATION_NOT_ALLOWED" -> "El acceso por correo no está habilitado. Contacta al administrador."
+                        "ERROR_WEAK_PASSWORD" -> "La contraseña no cumple los requisitos del servicio."
+                        else -> "No se pudo iniciar sesión. Revisa los datos y el estado de tu cuenta."
                     }
-
-                    _uiState.value = AuthUiState(
-                        isLoggedIn = true,
-                        currentRole = role,
-                        currentUserName = finalName,
-                        userEmail = firebaseUser?.email,
-                        isLoading = false
-                    )
-                    onSuccess(role, finalName)
-                } else {
-                    val errorMsg = task.exception?.localizedMessage ?: "Error al autenticar en Firebase."
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = errorMsg
-                    )
+                    else -> "No se pudo completar el acceso. Reintenta o contacta al administrador."
                 }
+                _uiState.value = AuthUiState(errorMessage = message)
             }
-    }
-
-    /**
-     * Registra un nuevo usuario en Firebase Authentication.
-     */
-    fun registerWithFirebase(
-        email: String,
-        pass: String,
-        role: UserRole,
-        customName: String?,
-        onSuccess: (UserRole, String) -> Unit
-    ) {
-        if (email.isBlank() || pass.isBlank()) {
-            _uiState.value = _uiState.value.copy(
-                errorMessage = "Por favor ingrese correo electrónico y contraseña."
-            )
-            return
         }
-
-        if (pass.length < 6) {
-            _uiState.value = _uiState.value.copy(
-                errorMessage = "La contraseña debe tener al menos 6 caracteres."
-            )
-            return
-        }
-
-        _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-
-        auth.createUserWithEmailAndPassword(email.trim(), pass)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val firebaseUser = auth.currentUser
-                    val finalName = if (!customName.isNullOrBlank()) customName else email.substringBefore("@")
-
-                    _uiState.value = AuthUiState(
-                        isLoggedIn = true,
-                        currentRole = role,
-                        currentUserName = finalName,
-                        userEmail = firebaseUser?.email,
-                        isLoading = false
-                    )
-                    onSuccess(role, finalName)
-                } else {
-                    val errorMsg = task.exception?.localizedMessage ?: "Error al registrar el usuario en Firebase."
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = errorMsg
-                    )
-                }
-            }
     }
 
-    /**
-     * Permite ingresar en modo local / demostración offline.
-     */
-    fun loginDemo(role: UserRole, customName: String?, onSuccess: (UserRole, String) -> Unit) {
-        val userName = if (!customName.isNullOrBlank()) customName else role.defaultUser
-        _uiState.value = AuthUiState(
-            isLoggedIn = true,
-            currentRole = role,
-            currentUserName = userName,
-            userEmail = "demo@aldemar.cl"
-        )
-        onSuccess(role, userName)
+    fun loginDemo(role: UserRole, customName: String?) {
+        if (!demoEnabled || _uiState.value.isLoading || _uiState.value.isLoggedIn) return
+        val name = customName?.trim().orEmpty().ifBlank { "Demostración" }.take(100)
+        runCatching { repository.logout() }
+        savedState["demo"] = true
+        savedState["demoName"] = name
+        savedState["demoRole"] = role.name
+        _uiState.value = AuthUiState(isLoggedIn = true, isDemo = true, currentRole = role, currentUserName = name)
     }
 
-    /**
-     * Limpia el mensaje de error activo.
-     */
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(errorMessage = null)
-    }
+    fun clearError() { _uiState.value = _uiState.value.copy(errorMessage = null) }
 
-    /**
-     * Cierra la sesión activa en Firebase y en la app.
-     */
     fun logout() {
-        try {
-            auth.signOut()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        _uiState.value = AuthUiState(isLoggedIn = false)
+        if (_uiState.value.isLoading) return
+        runCatching { repository.logout() }
+        savedState["demo"] = false
+        savedState.remove<String>("demoName")
+        savedState.remove<String>("demoRole")
+        _uiState.value = AuthUiState()
     }
+
+    private fun AuthAccount.toState() = AuthUiState(isLoggedIn = true, currentRole = role,
+        currentUserName = name, userEmail = email, userId = uid)
 }

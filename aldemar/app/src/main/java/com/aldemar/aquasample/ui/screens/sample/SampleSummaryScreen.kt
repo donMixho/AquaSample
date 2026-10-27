@@ -28,14 +28,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -69,14 +71,17 @@ fun SampleSummaryScreen(
     onNavigateBack: () -> Unit,
     onSaveSuccess: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val busy = uiState.isSaving || uiState.isPhotoBusy
+    BackHandler(enabled = busy) { }
+
 
     Scaffold(
         topBar = {
             AquaTopBar(
                 title = "Resumen de Muestra (Paso 4/4)",
                 canNavigateBack = true,
-                onNavigateBack = onNavigateBack
+                onNavigateBack = { if (!busy) onNavigateBack() }
             )
         },
         containerColor = AquaBackground
@@ -203,6 +208,11 @@ fun SampleSummaryScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            uiState.errorMessage?.let { message ->
+                Text(message, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             // Botón de Confirmación y Guardado en SQLite
             Button(
                 onClick = {
@@ -232,7 +242,7 @@ fun SampleSummaryScreen(
                     )
                     Spacer(modifier = Modifier.size(6.dp))
                     Text(
-                        text = "Guardar y Enviar a Revisión",
+                        text = "Guardar muestra",
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                         color = AquaSurface
@@ -254,7 +264,7 @@ fun SummaryRow(label: String, value: String) {
             .padding(vertical = 3.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, fontSize = 13.sp, color = AquaTextSecondary)
-        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = AquaTextPrimary)
+        Text(text = label, fontSize = 13.sp, color = AquaTextSecondary, modifier = Modifier.weight(1f).padding(end = 8.dp))
+        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = AquaTextPrimary, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
     }
 }

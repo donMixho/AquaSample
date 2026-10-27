@@ -70,6 +70,8 @@ import com.aldemar.aquasample.ui.theme.AquaSecondary
 import com.aldemar.aquasample.ui.theme.AquaSurface
 import com.aldemar.aquasample.ui.theme.AquaTextPrimary
 import com.aldemar.aquasample.ui.theme.AquaTextSecondary
+import com.aldemar.aquasample.BuildConfig
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.aldemar.aquasample.ui.viewmodel.AuthUiState
 import com.aldemar.aquasample.ui.viewmodel.AuthViewModel
 
@@ -78,18 +80,17 @@ import com.aldemar.aquasample.ui.viewmodel.AuthViewModel
  *
  * Incluye:
  * - Autenticación remota mediante Firebase Auth (Email/Contraseña).
- * - Selección de perfil (Operador vs. Supervisor) para control de acceso por rol.
+ * - Rol real obtenido del token; selección de perfil solo para demostración.
  * - Registro de nuevos usuarios y modo offline de demostración.
  */
 @Composable
 fun LoginScreen(
     authUiState: AuthUiState,
-    authViewModel: AuthViewModel,
-    onLoginSuccess: (UserRole, String) -> Unit
+    authViewModel: AuthViewModel
 ) {
-    var selectedRole by remember { mutableStateOf(UserRole.OPERADOR) }
-    var userName by remember { mutableStateOf(UserRole.OPERADOR.defaultUser) }
-    var email by remember { mutableStateOf("") }
+    var selectedRole by rememberSaveable { mutableStateOf(UserRole.OPERADOR) }
+    var userName by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Login, 1: Registro
@@ -207,9 +208,141 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Campo Correo electrónico
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Correo electrónico") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null,
+                            tint = AquaPrimary
+                        )
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AquaSecondary,
+                        focusedLabelColor = AquaPrimary,
+                        unfocusedBorderColor = AquaOutline
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Campo Contraseña (Firebase)
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Contraseña") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = AquaPrimary
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                            Icon(
+                                imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = "Mostrar u ocultar contraseña"
+                            )
+                        }
+                    },
+                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AquaSecondary,
+                        focusedLabelColor = AquaPrimary,
+                        unfocusedBorderColor = AquaOutline
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Campo Nombre (registro o demostración)
+                OutlinedTextField(
+                    value = userName,
+                    onValueChange = { userName = it },
+                    label = { Text("Nombre (registro o demostración)") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Badge,
+                            contentDescription = null,
+                            tint = AquaPrimary
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AquaSecondary,
+                        focusedLabelColor = AquaPrimary,
+                        unfocusedBorderColor = AquaOutline
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Botón principal (Iniciar Sesión o Registrarse en Firebase)
+                Button(
+                    onClick = {
+                        if (selectedTab == 0) {
+                            authViewModel.loginWithFirebase(
+                                email = email,
+                                pass = password
+                            )
+                        } else {
+                            authViewModel.registerWithFirebase(
+                                email = email,
+                                pass = password,
+                                customName = userName
+                            )
+                        }
+                    },
+                    enabled = !authUiState.isLoading,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
+                ) {
+                    if (authUiState.isLoading) {
+                        CircularProgressIndicator(
+                            color = AquaSurface,
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = if (selectedTab == 0) "Iniciar sesión" else "Crear cuenta",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AquaSurface
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (BuildConfig.DEBUG) {
+                Text("Demostración: datos separados del acceso real.", color = AquaTextSecondary, fontSize = 12.sp)
                 // Selector de Roles mediante Chips
                 Text(
-                    text = "Seleccione su Rol Corporativo",
+                    text = "Perfil de demostración",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = AquaTextPrimary,
@@ -273,148 +406,13 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Campo Correo Electrónico (Firebase)
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Correo Electrónico (Firebase)") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = null,
-                            tint = AquaPrimary
-                        )
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AquaSecondary,
-                        focusedLabelColor = AquaPrimary,
-                        unfocusedBorderColor = AquaOutline
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Campo Contraseña (Firebase)
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Contraseña") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = AquaPrimary
-                        )
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                            Icon(
-                                imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = "Mostrar u ocultar contraseña"
-                            )
-                        }
-                    },
-                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AquaSecondary,
-                        focusedLabelColor = AquaPrimary,
-                        unfocusedBorderColor = AquaOutline
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Campo Nombre del Profesional
-                OutlinedTextField(
-                    value = userName,
-                    onValueChange = { userName = it },
-                    label = { Text("Nombre del Profesional") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Badge,
-                            contentDescription = null,
-                            tint = AquaPrimary
-                        )
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AquaSecondary,
-                        focusedLabelColor = AquaPrimary,
-                        unfocusedBorderColor = AquaOutline
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Botón principal (Iniciar Sesión o Registrarse en Firebase)
-                Button(
-                    onClick = {
-                        if (selectedTab == 0) {
-                            authViewModel.loginWithFirebase(
-                                email = email,
-                                pass = password,
-                                role = selectedRole,
-                                customName = userName,
-                                onSuccess = onLoginSuccess
-                            )
-                        } else {
-                            authViewModel.registerWithFirebase(
-                                email = email,
-                                pass = password,
-                                role = selectedRole,
-                                customName = userName,
-                                onSuccess = onLoginSuccess
-                            )
-                        }
-                    },
-                    enabled = !authUiState.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
-                ) {
-                    if (authUiState.isLoading) {
-                        CircularProgressIndicator(
-                            color = AquaSurface,
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = if (selectedTab == 0) "Verificar e Ingresar con Firebase" else "Crear Cuenta Firebase",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AquaSurface
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
                 // Botón alternativo para demostración offline sin requerir credenciales Firebase
                 OutlinedButton(
+                    enabled = !authUiState.isLoading,
                     onClick = {
                         authViewModel.loginDemo(
                             role = selectedRole,
-                            customName = userName,
-                            onSuccess = onLoginSuccess
+                            customName = userName
                         )
                     },
                     modifier = Modifier
@@ -432,12 +430,13 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "🔒 Autenticación Firebase Verificada",
+                        text = "El rol de la cuenta lo asigna el administrador.",
                         fontSize = 11.sp,
                         color = AquaTextSecondary
                     )

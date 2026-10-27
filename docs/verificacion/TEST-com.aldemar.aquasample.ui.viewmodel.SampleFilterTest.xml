@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.aldemar.aquasample.ui.viewmodel.SampleFilterTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-27T02:39:10.848Z" hostname="MATHY_MJ02" time="0.008">
+  <properties/>
+  <testcase name="unknownTextProducesEmptyResult" classname="com.aldemar.aquasample.ui.viewmodel.SampleFilterTest" time="0.005"/>
+  <testcase name="searchesAcrossFieldsIgnoringCaseAndExtraSpaces" classname="com.aldemar.aquasample.ui.viewmodel.SampleFilterTest" time="0.001"/>
+  <testcase name="combinesSearchStatusAndCenter" classname="com.aldemar.aquasample.ui.viewmodel.SampleFilterTest" time="0.002"/>
+  <testcase name="blankQueryShowsAll" classname="com.aldemar.aquasample.ui.viewmodel.SampleFilterTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,9 +1,14 @@
 package com.aldemar.aquasample.ui.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.compose.ui.platform.LocalContext
+import com.aldemar.aquasample.AquaSampleApp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -34,20 +39,41 @@ import com.aldemar.aquasample.ui.viewmodel.SupervisorReviewViewModel
  */
 @Composable
 fun AquaNavigation(
-    repository: SampleRepository,
+    realRepository: SampleRepository,
     authViewModel: AuthViewModel = viewModel()
 ) {
     val navController = rememberNavController()
-    val authUiState by authViewModel.uiState.collectAsState()
+    val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
 
-    // Instancias de ViewModels vinculadas al ciclo de vida del NavHost
-    val sampleListViewModel = remember { SampleListViewModel(repository) }
-    val sampleCreateViewModel = remember { SampleCreateViewModel(repository) }
-    val supervisorReviewViewModel = remember { SupervisorReviewViewModel(repository) }
+    val app = LocalContext.current.applicationContext as AquaSampleApp
+    val repository = if (authUiState.isDemo) app.demoRepository else realRepository
+    val mode = if (authUiState.isDemo) "demo" else "real"
+    val factory = remember(repository) {
+        viewModelFactory {
+            initializer { SampleListViewModel(repository, createSavedStateHandle()) }
+            initializer { SampleCreateViewModel(repository, app.photoStorage, createSavedStateHandle()) }
+            initializer { SupervisorReviewViewModel(repository) }
+        }
+    }
+    // Activity-owned instances survive rotation and are cleared with their owner.
+    val sampleListViewModel: SampleListViewModel = viewModel(key = "$mode-list", factory = factory)
+    val sampleCreateViewModel: SampleCreateViewModel = viewModel(key = "$mode-create", factory = factory)
+
+    androidx.compose.runtime.LaunchedEffect(authUiState.isLoggedIn, authUiState.isLoading) {
+        if (!authUiState.isLoading) {
+            val route = navController.currentDestination?.route
+            if (authUiState.isLoggedIn && route == Screen.Login.route) {
+                sampleCreateViewModel.setOperator(authUiState.currentUserName)
+                navController.navigate(Screen.Home.route) { popUpTo(Screen.Login.route) { inclusive = true } }
+            } else if (!authUiState.isLoggedIn && route != null && route != Screen.Login.route) {
+                navController.navigate(Screen.Login.route) { popUpTo(navController.graph.id) { inclusive = true } }
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
-        startDestination = if (authUiState.isLoggedIn) Screen.Home.route else Screen.Login.route
+        startDestination = Screen.Login.route
     ) {
         // ==========================================
         // 1. Pantalla de Login
@@ -55,13 +81,8 @@ fun AquaNavigation(
         composable(Screen.Login.route) {
             LoginScreen(
                 authUiState = authUiState,
-                authViewModel = authViewModel,
-                onLoginSuccess = { _, name ->
-                    sampleCreateViewModel.setOperator(name)
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
-                }
+                authViewModel = authViewModel
+
             )
         }
 
@@ -69,6 +90,7 @@ fun AquaNavigation(
         // 2. Pantalla Principal: Historial y Filtros
         // ==========================================
         composable(Screen.Home.route) {
+            if (!authUiState.isLoggedIn) return@composable
             HomeScreen(
                 authUiState = authUiState,
                 viewModel = sampleListViewModel,
@@ -81,6 +103,8 @@ fun AquaNavigation(
                     navController.navigate(Screen.SupervisorReview.createRoute(sampleId))
                 },
                 onLogout = {
+                    sampleCreateViewModel.reset()
+                    sampleListViewModel.clearFilters()
                     authViewModel.logout()
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
@@ -93,6 +117,7 @@ fun AquaNavigation(
         // 3. Wizard Paso 1: Ubicación y Datos Base
         // ==========================================
         composable(Screen.NewSample.route) {
+            if (!authUiState.isLoggedIn) return@composable
             NewSampleScreen(
                 viewModel = sampleCreateViewModel,
                 onNavigateBack = { navController.popBackStack() },
@@ -104,6 +129,7 @@ fun AquaNavigation(
         // 4. Wizard Paso 2: Evidencia Fotográfica
         // ==========================================
         composable(Screen.PhotoCapture.route) {
+            if (!authUiState.isLoggedIn) return@composable
             PhotoCaptureScreen(
                 viewModel = sampleCreateViewModel,
                 onNavigateBack = { navController.popBackStack() },
@@ -115,6 +141,7 @@ fun AquaNavigation(
         // 5. Wizard Paso 3: Conteo Numérico y Observaciones
         // ==========================================
         composable(Screen.CountObservations.route) {
+            if (!authUiState.isLoggedIn) return@composable
             CountObservationsScreen(
                 viewModel = sampleCreateViewModel,
                 onNavigateBack = { navController.popBackStack() },
@@ -126,10 +153,13 @@ fun AquaNavigation(
         // 6. Wizard Paso 4: Resumen y Persistencia Local
         // ==========================================
         composable(Screen.SampleSummary.route) {
+            if (!authUiState.isLoggedIn) return@composable
             SampleSummaryScreen(
                 viewModel = sampleCreateViewModel,
                 onNavigateBack = { navController.popBackStack() },
                 onSaveSuccess = {
+                    sampleListViewModel.showMessage("Muestra guardada. Disponible para revisión en este dispositivo.")
+                    sampleListViewModel.clearFilters()
                     // Al guardar exitosamente, volvemos al Home limpiando la pila del formulario
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
@@ -145,11 +175,12 @@ fun AquaNavigation(
             route = Screen.SupervisorReview.route,
             arguments = listOf(navArgument("sampleId") { type = NavType.LongType })
         ) { backStackEntry ->
+            if (!authUiState.isLoggedIn) return@composable
             val sampleId = backStackEntry.arguments?.getLong("sampleId") ?: 0L
             SupervisorReviewScreen(
                 sampleId = sampleId,
                 authUiState = authUiState,
-                viewModel = supervisorReviewViewModel,
+                viewModel = viewModel<SupervisorReviewViewModel>(key = "$mode-review-$sampleId", factory = factory),
                 onNavigateBack = { navController.popBackStack() }
             )
         }

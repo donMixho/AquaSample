@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.aldemar.aquasample.ui.viewmodel.SampleValidationTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-10-27T02:39:10.859Z" hostname="MATHY_MJ02" time="0.026">
+  <properties/>
+  <testcase name="observedSampleRequiresAnExplanation" classname="com.aldemar.aquasample.ui.viewmodel.SampleValidationTest" time="0.001"/>
+  <testcase name="rejectsInvalidCountWithoutSilentlyConvertingToZero" classname="com.aldemar.aquasample.ui.viewmodel.SampleValidationTest" time="0.0"/>
+  <testcase name="rejectsInvalidAndNonFiniteLength" classname="com.aldemar.aquasample.ui.viewmodel.SampleValidationTest" time="0.008"/>
+  <testcase name="rejectsExcessiveFieldLength" classname="com.aldemar.aquasample.ui.viewmodel.SampleValidationTest" time="0.001"/>
+  <testcase name="rejectsMissingRequiredFields" classname="com.aldemar.aquasample.ui.viewmodel.SampleValidationTest" time="0.012"/>
+  <testcase name="approvalAllowsOptionalCommentButEnforcesLength" classname="com.aldemar.aquasample.ui.viewmodel.SampleValidationTest" time="0.0"/>
+  <testcase name="acceptsPositiveLengthWithEitherDecimalSeparator" classname="com.aldemar.aquasample.ui.viewmodel.SampleValidationTest" time="0.001"/>
+  <testcase name="acceptsZeroAndUpperCountBoundary" classname="com.aldemar.aquasample.ui.viewmodel.SampleValidationTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

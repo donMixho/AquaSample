@@ -26,14 +26,16 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldemar.aquasample.ui.components.AquaTopBar
@@ -64,10 +66,10 @@ fun NewSampleScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPhoto: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val centers by viewModel.centers.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val centers by viewModel.centers.collectAsStateWithLifecycle()
 
-    var centerDropdownExpanded by remember { mutableStateOf(false) }
+    var centerDropdownExpanded by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -131,6 +133,8 @@ fun NewSampleScreen(
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Centro de Cultivo *") },
+                            isError = uiState.fieldErrors.containsKey("center"),
+                            supportingText = { uiState.fieldErrors["center"]?.let { Text(it) } },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = centerDropdownExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -172,6 +176,8 @@ fun NewSampleScreen(
                             value = uiState.trainNumber,
                             onValueChange = { viewModel.updateTrain(it) },
                             label = { Text("Tren / Módulo *") },
+                            isError = uiState.fieldErrors.containsKey("train"),
+                            supportingText = { uiState.fieldErrors["train"]?.let { Text(it) } },
                             placeholder = { Text("Ej: Tren 01") },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(8.dp),
@@ -187,6 +193,8 @@ fun NewSampleScreen(
                             value = uiState.lineNumber,
                             onValueChange = { viewModel.updateLine(it) },
                             label = { Text("Línea / Cuerda *") },
+                            isError = uiState.fieldErrors.containsKey("line"),
+                            supportingText = { uiState.fieldErrors["line"]?.let { Text(it) } },
                             placeholder = { Text("Ej: Línea 14") },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(8.dp),
@@ -204,6 +212,9 @@ fun NewSampleScreen(
                         value = uiState.sectionLengthMeters,
                         onValueChange = { viewModel.updateSectionLength(it) },
                         label = { Text("Longitud del Tramo Muestreado (Metros) *") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            isError = uiState.fieldErrors.containsKey("length"),
+                            supportingText = { uiState.fieldErrors["length"]?.let { Text(it) } },
                         placeholder = { Text("1.0") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -221,6 +232,8 @@ fun NewSampleScreen(
                         value = uiState.operatorName,
                         onValueChange = { viewModel.setOperator(it) },
                         label = { Text("Operador de Terreno *") },
+                            isError = uiState.fieldErrors.containsKey("operator"),
+                            supportingText = { uiState.fieldErrors["operator"]?.let { Text(it) } },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
@@ -250,6 +263,11 @@ fun NewSampleScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            if (uiState.fieldErrors.isNotEmpty()) {
+                Text("Revisa los campos señalados para continuar.", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // Botón de avance al paso de fotografía
             Button(

@@ -1,82 +1,38 @@
 package com.aldemar.aquasample.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aldemar.aquasample.data.local.entity.CenterEntity
 import com.aldemar.aquasample.data.local.entity.SampleEntity
 import com.aldemar.aquasample.data.model.SampleStatus
 import com.aldemar.aquasample.data.repository.SampleRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 
-/**
- * ViewModel que alimenta la pantalla principal e historial de muestras (HomeScreen).
- *
- * Principio reactivo con StateFlow:
- * - Utiliza el operador 'combine' de Kotlin Coroutines para combinar 4 flujos en tiempo real:
- *   1. El flujo de muestras de la base de datos (Room).
- *   2. El texto escrito en la barra de búsqueda.
- *   3. El chip de estado seleccionado (Todos, Pendientes, Validados, Observados).
- *   4. El filtro de centro si aplica.
- * - Cualquier cambio en la BD o en los filtros recalcula instantáneamente la lista resultante.
- */
-class SampleListViewModel(
-    private val repository: SampleRepository
-) : ViewModel() {
+data class SampleListUiState(val samples: List<SampleEntity> = emptyList(),
+    val isLoading: Boolean = true, val error: String? = null)
 
-    val centers: StateFlow<List<CenterEntity>> = repository.allCenters
+class SampleListViewModel(repository: SampleRepository, private val savedState: SavedStateHandle) : ViewModel() {
+    val message = savedState.getStateFlow<String?>("message", null)
+    fun showMessage(value: String) { savedState["message"] = value }
+    fun consumeMessage() { savedState["message"] = null }
+    val searchQuery = savedState.getStateFlow("query", "")
+    private val statusName = savedState.getStateFlow<String?>("status", null)
+    val selectedStatusFilter = statusName.map { name -> name?.let { SampleStatus.fromString(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), statusName.value?.let { SampleStatus.fromString(it) })
+    val selectedCenterFilter = savedState.getStateFlow<String?>("center", null)
+    val centers = repository.allCenters.catch { emit(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Texto del buscador en tiempo real
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
-    // Filtro por estado (null = todos)
-    private val _selectedStatusFilter = MutableStateFlow<SampleStatus?>(null)
-    val selectedStatusFilter: StateFlow<SampleStatus?> = _selectedStatusFilter.asStateFlow()
-
-    // Filtro por centro (null = todos)
-    private val _selectedCenterFilter = MutableStateFlow<String?>(null)
-    val selectedCenterFilter: StateFlow<String?> = _selectedCenterFilter.asStateFlow()
-
-    /**
-     * Lista filtrada expuesta como StateFlow reactivo para la UI de Compose.
-     */
-    val filteredSamples: StateFlow<List<SampleEntity>> = combine(
-        repository.allSamples,
-        _searchQuery,
-        _selectedStatusFilter,
-        _selectedCenterFilter
-    ) { samples, query, statusFilter, centerFilter ->
-        samples.filter { sample ->
-            val matchesQuery = query.isBlank() ||
-                    sample.code.contains(query, ignoreCase = true) ||
-                    sample.centerName.contains(query, ignoreCase = true) ||
-                    sample.trainNumber.contains(query, ignoreCase = true) ||
-                    sample.lineNumber.contains(query, ignoreCase = true) ||
-                    sample.operatorName.contains(query, ignoreCase = true)
-
-            val matchesStatus = statusFilter == null || sample.status.equals(statusFilter.name, ignoreCase = true)
-
-            val matchesCenter = centerFilter == null || sample.centerName.equals(centerFilter, ignoreCase = true)
-
-            matchesQuery && matchesStatus && matchesCenter
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    fun updateSearchQuery(query: String) {
-        _searchQuery.value = query
-    }
-
-    fun setStatusFilter(status: SampleStatus?) {
-        _selectedStatusFilter.value = status
-    }
-
-    fun setCenterFilter(center: String?) {
-        _selectedCenterFilter.value = center
-    }
+    private val retry = MutableStateFlow(0)
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val uiState = retry.flatMapLatest {
+        combine(repository.allSamples, searchQuery, statusName, selectedCenterFilter) { samples, query, status, center ->
+            SampleListUiState(SampleFilter.apply(samples, query, status?.let { SampleStatus.fromString(it) }, center), false)
+        }.onStart { emit(SampleListUiState()) }
+            .catch { emit(SampleListUiState(isLoading = false, error = "No se pudo cargar el historial. Reintenta.")) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SampleListUiState())
+    fun updateSearchQuery(value: String) { savedState["query"] = value.take(100) }
+    fun setStatusFilter(value: SampleStatus?) { savedState["status"] = value?.name }
+    fun setCenterFilter(value: String?) { savedState["center"] = value }
+    fun clearFilters() { updateSearchQuery(""); setStatusFilter(null); setCenterFilter(null) }
+    fun retryLoad() { retry.value += 1 }
 }

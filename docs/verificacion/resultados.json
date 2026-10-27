@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-27",
+  "base_commit": "925db20ecf26d807ae02d163110a26187401f9d3",
+  "branch": "integracion/ep2-ep3",
+  "build": {
+    "debug": "passed",
+    "release_unsigned": "passed",
+    "jdk": "21.0.8",
+    "compile_sdk": 35,
+    "target_sdk": 35
+  },
+  "unit": {
+    "tests": 21,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "android": {
+    "tests": 9,
+    "passed": 9,
+    "device": "Samsung Galaxy A35 (SM-A356E)",
+    "android": "14",
+    "runner": "AndroidJUnitRunner via adb am instrument",
+    "gradle_attempt": "USB authorization interrupted connectedDebugAndroidTest; direct instrumentation rerun passed"
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 37
+  },
+  "manual": {
+    "status": "user_reported_app_working_well",
+    "details": "Usuario informa que probó la app y va muy bien después de solicitar prueba de cámara y galería. No entregó resultados separados por caso."
+  },
+  "firebase_live": "not_verified_with_real_account",
+  "preserved": [
+    "AquaSample_DB scripts unchanged",
+    "google-services.json unchanged",
+    "Room schema remains version 1"
+  ],
+  "apk": {
+    "file": "AquaSample_integrado_EP2_EP3_v4.apk",
+    "bytes": 22106036,
+    "sha256": "aaea5aa80e8c1508ef8110c0711bdd3693301c3192b4f1f79cffcd622f45637e",
+    "signature": "apksigner verified v2"
+  },
+  "not_published": true
+}

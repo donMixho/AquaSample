@@ -1,205 +1,177 @@
 package com.aldemar.aquasample.ui.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.aldemar.aquasample.data.local.entity.CenterEntity
 import com.aldemar.aquasample.data.local.entity.SampleEntity
+import com.aldemar.aquasample.data.repository.PhotoStorage
 import com.aldemar.aquasample.data.repository.SampleRepository
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.Serializable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
-/**
- * Estado inmutable que encapsula los datos capturados durante los 4 pasos del wizard.
- */
 data class CreateSampleUiState(
     val centerName: String = "Centro Huar",
-    val trainNumber: String = "Tren 01",
-    val lineNumber: String = "Línea 01",
-    val sampleDate: String = "",
+    val trainNumber: String = "",
+    val lineNumber: String = "",
+    val sampleDate: String = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault()).format(Date()),
     val sectionLengthMeters: String = "1.0",
-    val operatorName: String = "Carlos Delgado",
+    val operatorName: String = "",
     val pendingPhotoUri: String? = null,
     val photoPath: String? = null,
     val photoErrorMessage: String? = null,
-    val musselCount: Int = 0,
+    val isPhotoBusy: Boolean = false,
+    val countText: String = "0",
     val observations: String = "",
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val savedId: Long? = null,
-    val errorMessage: String? = null
-)
+    val errorMessage: String? = null,
+    val fieldErrors: Map<String, String> = emptyMap(),
+    val code: String = "MUE-${UUID.randomUUID()}"
+) : Serializable {
+    val musselCount: Int get() = countText.trim().toIntOrNull() ?: 0
+}
 
-/**
- * ViewModel que orquesta el flujo de creación de una nueva muestra (Wizard de 4 pasos).
- *
- * Responsabilidades:
- * - Almacenar los datos temporales ingresados por el operador a través de las 4 pantallas:
- *   (1. Ubicación ➔ 2. Foto ➔ 3. Conteo ➔ 4. Resumen).
- * - Proporcionar métodos ergonómicos para el conteo rápido (+1, +10, +50, -1, -10).
- * - Validar que los campos obligatorios estén presentes antes de persistir.
- * - Crear y persistir la entidad 'SampleEntity' en la base de datos Room SQLite.
- */
 class SampleCreateViewModel(
-    private val repository: SampleRepository
+    private val repository: SampleRepository,
+    private val photos: PhotoStorage,
+    private val savedState: SavedStateHandle
 ) : ViewModel() {
-
-    // Lista de centros de cultivo disponibles en la base de datos
-    val centers: StateFlow<List<CenterEntity>> = repository.allCenters
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    private val _uiState = MutableStateFlow(CreateSampleUiState())
-    val uiState: StateFlow<CreateSampleUiState> = _uiState.asStateFlow()
-
     init {
-        resetDateTime()
+        val restored = savedState.get<CreateSampleUiState>("draft") ?: CreateSampleUiState()
+        savedState["draft"] = restored.copy(isSaving = false, isPhotoBusy = false)
     }
+    val uiState = savedState.getStateFlow("draft", CreateSampleUiState())
+    private var state: CreateSampleUiState
+        get() = uiState.value
+        set(value) { savedState["draft"] = value }
+    val centers = repository.allCenters.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /**
-     * Establece la fecha y hora actual automáticamente.
-     */
-    fun resetDateTime() {
-        val formatter = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
-        _uiState.value = _uiState.value.copy(sampleDate = formatter.format(Date()))
+    fun setOperator(value: String) { state = state.copy(operatorName = value.take(101), fieldErrors = state.fieldErrors - "operator") }
+    fun updateCenter(value: String) { state = state.copy(centerName = value.take(101), fieldErrors = state.fieldErrors - "center") }
+    fun updateTrain(value: String) { state = state.copy(trainNumber = value.take(101), fieldErrors = state.fieldErrors - "train") }
+    fun updateLine(value: String) { state = state.copy(lineNumber = value.take(101), fieldErrors = state.fieldErrors - "line") }
+    fun updateSectionLength(value: String) { state = state.copy(sectionLengthMeters = value.take(32), fieldErrors = state.fieldErrors - "length") }
+    fun updateObservations(value: String) { state = state.copy(observations = value.take(2000)) }
+    fun updateCount(value: String) {
+        val text = value.take(16)
+        val error = SampleValidation.validateCount(text)
+        state = state.copy(countText = text, fieldErrors = (state.fieldErrors - "count") +
+            if (error == null) emptyMap() else mapOf("count" to error))
     }
-
-    fun setOperator(name: String) {
-        _uiState.value = _uiState.value.copy(operatorName = name)
-    }
-
-    fun updateCenter(center: String) {
-        _uiState.value = _uiState.value.copy(centerName = center)
-    }
-
-    fun updateTrain(train: String) {
-        _uiState.value = _uiState.value.copy(trainNumber = train)
-    }
-
-    fun updateLine(line: String) {
-        _uiState.value = _uiState.value.copy(lineNumber = line)
-    }
-
-    fun updateSectionLength(length: String) {
-        _uiState.value = _uiState.value.copy(sectionLengthMeters = length)
-    }
-
-    fun updatePhotoPath(path: String?) {
-        _uiState.value = _uiState.value.copy(
-            pendingPhotoUri = null,
-            photoPath = path,
-            photoErrorMessage = null
-        )
-    }
-
-    fun setPendingPhotoUri(uri: String) {
-        _uiState.value = _uiState.value.copy(
-            pendingPhotoUri = uri,
-            photoErrorMessage = null
-        )
-    }
-
-    fun confirmPhoto(path: String) {
-        _uiState.value = _uiState.value.copy(
-            pendingPhotoUri = null,
-            photoPath = path,
-            photoErrorMessage = null
-        )
-    }
-
-    fun discardPendingPhoto() {
-        _uiState.value = _uiState.value.copy(
-            pendingPhotoUri = null,
-            photoErrorMessage = null
-        )
-    }
-
-    fun setPhotoError(message: String) {
-        _uiState.value = _uiState.value.copy(photoErrorMessage = message)
-    }
-
-    /**
-     * Incrementa o decrementa el conteo de choritos evitando valores negativos.
-     */
     fun incrementCount(amount: Int) {
-        val current = _uiState.value.musselCount
-        val next = (current + amount).coerceAtLeast(0)
-        _uiState.value = _uiState.value.copy(musselCount = next)
+        val next = (state.musselCount.toLong() + amount).coerceIn(0, SampleValidation.MAX_COUNT.toLong())
+        updateCount(next.toString())
     }
-
-    /**
-     * Permite fijar directamente un número escrito a mano por el operador.
-     */
-    fun setCount(count: Int) {
-        _uiState.value = _uiState.value.copy(musselCount = count.coerceAtLeast(0))
-    }
-
-    fun updateObservations(notes: String) {
-        _uiState.value = _uiState.value.copy(observations = notes)
-    }
-
-    /**
-     * Validación de negocio: exige centro, tren, línea y operador obligatorios.
-     */
     fun validateStep1(): Boolean {
-        val state = _uiState.value
-        return state.centerName.isNotBlank() &&
-                state.trainNumber.isNotBlank() &&
-                state.lineNumber.isNotBlank() &&
-                state.operatorName.isNotBlank()
+        val errors = SampleValidation.validateLocation(state.centerName, state.trainNumber,
+            state.lineNumber, state.operatorName, state.sectionLengthMeters)
+        state = state.copy(fieldErrors = errors, errorMessage = null)
+        return errors.isEmpty()
     }
-
-    /**
-     * Guarda la muestra en la base de datos local SQLite de Room.
-     */
-    fun saveSample(onSuccess: (Long) -> Unit) {
-        val state = _uiState.value
-        val length = state.sectionLengthMeters.toDoubleOrNull() ?: 1.0
-
-        _uiState.value = state.copy(isSaving = true, errorMessage = null)
-
+    fun validateCount(): Boolean {
+        updateCount(state.countText)
+        return "count" !in state.fieldErrors
+    }
+    fun validatePhoto(): Boolean {
+        if (state.photoPath == null || state.pendingPhotoUri != null || state.isPhotoBusy) {
+            setPhotoError("Toma o elige una foto y confírmala antes de continuar.")
+            return false
+        }
+        return true
+    }
+    fun setPhotoError(message: String) { state = state.copy(photoErrorMessage = message) }
+    fun prepareCamera(onReady: (String) -> Unit) {
+        if (state.isPhotoBusy) return
+        state = state.copy(isPhotoBusy = true, photoErrorMessage = null)
         viewModelScope.launch {
             try {
-                // Genera un código correlativo legible (ej: MUE-8492)
-                val code = "MUE-${System.currentTimeMillis().toString().takeLast(4)}"
-                val entity = SampleEntity(
-                    code = code,
-                    centerName = state.centerName,
-                    trainNumber = state.trainNumber,
-                    lineNumber = state.lineNumber,
-                    sampleDate = state.sampleDate.ifBlank {
-                        SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault()).format(Date())
-                    },
-                    sectionLengthMeters = length,
-                    operatorName = state.operatorName,
-                    musselCount = state.musselCount,
-                    observations = state.observations.ifBlank { "Sin observaciones adicionales." },
-                    photoPath = state.photoPath,
-                    status = "PENDIENTE",
-                    supervisorComment = null,
-                    supervisorName = null
-                )
-
-                // Inserción en Room a través del repositorio
-                val id = repository.insertSample(entity)
-                _uiState.value = _uiState.value.copy(isSaving = false, isSaved = true, savedId = id)
-                onSuccess(id)
+                photos.discard(state.pendingPhotoUri)
+                val uri = photos.prepareCamera()
+                state = state.copy(pendingPhotoUri = uri, isPhotoBusy = false)
+                onReady(uri)
+            } catch (e: CancellationException) { throw e
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isSaving = false, errorMessage = e.message)
+                photos.discard(state.pendingPhotoUri)
+                state = state.copy(pendingPhotoUri = null, isPhotoBusy = false,
+                    photoErrorMessage = "No se pudo abrir la cámara. Puedes usar la galería.")
             }
         }
     }
-
-    /**
-     * Reinicia el estado del formulario para el siguiente muestreo.
-     */
+    fun cameraResult(success: Boolean) {
+        if (!success) discardPendingPhoto()
+    }
+    fun discardPendingPhoto() {
+        val uri = state.pendingPhotoUri
+        state = state.copy(pendingPhotoUri = null, photoErrorMessage = null)
+        viewModelScope.launch { photos.discard(uri) }
+    }
+    fun confirmPendingPhoto() {
+        val uri = state.pendingPhotoUri ?: return
+        processPhoto { photos.verify(uri); uri }
+    }
+    fun importPhoto(uri: String) { processPhoto { photos.importPhoto(uri) } }
+    private fun processPhoto(operation: suspend () -> String) {
+        if (state.isPhotoBusy) return
+        state = state.copy(isPhotoBusy = true, photoErrorMessage = null)
+        viewModelScope.launch {
+            try {
+                val path = operation()
+                val oldPhoto = state.photoPath
+                state = state.copy(photoPath = path, pendingPhotoUri = null, isPhotoBusy = false, photoErrorMessage = null)
+                if (oldPhoto != path) photos.discard(oldPhoto)
+            } catch (e: CancellationException) { throw e
+            } catch (e: Exception) {
+                state = state.copy(isPhotoBusy = false, photoErrorMessage = e.message ?: "No se pudo guardar la imagen.")
+            }
+        }
+    }
+    fun saveSample(onSuccess: (Long) -> Unit) {
+        if (state.isSaving || state.isPhotoBusy) return
+        state.savedId?.let { onSuccess(it); return }
+        if (!validateStep1() || !validateCount() || !validatePhoto()) {
+            state = state.copy(errorMessage = "Revisa los datos, el conteo y la fotografía antes de guardar.")
+            return
+        }
+        val snapshot = state
+        state = state.copy(isSaving = true, errorMessage = null)
+        viewModelScope.launch {
+            try {
+                photos.verify(checkNotNull(snapshot.photoPath))
+                val entity = SampleEntity(code = snapshot.code, centerName = snapshot.centerName.trim(),
+                    trainNumber = snapshot.trainNumber.trim(), lineNumber = snapshot.lineNumber.trim(),
+                    sampleDate = snapshot.sampleDate,
+                    sectionLengthMeters = snapshot.sectionLengthMeters.trim().replace(',', '.').toDouble(),
+                    operatorName = snapshot.operatorName.trim(), musselCount = snapshot.musselCount,
+                    observations = snapshot.observations.trim().ifBlank { "Sin observaciones adicionales." },
+                    photoPath = snapshot.photoPath)
+                val id = repository.insertSample(entity)
+                state = state.copy(isSaving = false, isSaved = true, savedId = id)
+                onSuccess(id)
+            } catch (e: CancellationException) { throw e
+            } catch (e: Exception) {
+                state = state.copy(isSaving = false, errorMessage = "No se pudo guardar. ${e.message.orEmpty()} Puedes reintentar.")
+            }
+        }
+    }
     fun reset() {
-        val formatter = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
-        _uiState.value = CreateSampleUiState(sampleDate = formatter.format(Date()))
+        val old = state
+        state = CreateSampleUiState()
+        viewModelScope.launch {
+            photos.discard(old.pendingPhotoUri)
+            // A committed sample owns its image; never delete it on reset.
+            if (!old.isSaved) {
+                // If the database is temporarily unavailable, retain the file rather than risk deleting evidence.
+                val committed = runCatching { repository.findIdByCode(old.code) }.getOrElse { return@launch }
+                if (committed == null) photos.discard(old.photoPath)
+            }
+        }
     }
 }

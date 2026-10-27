@@ -1,6 +1,5 @@
 package com.aldemar.aquasample.ui.screens.sample
 
-import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.Button
@@ -32,18 +32,17 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.aldemar.aquasample.ui.components.AquaTopBar
 import com.aldemar.aquasample.ui.theme.AquaBackground
@@ -56,10 +55,6 @@ import com.aldemar.aquasample.ui.theme.AquaTextSecondary
 import com.aldemar.aquasample.ui.theme.StatusAlert
 import com.aldemar.aquasample.ui.theme.StatusValidated
 import com.aldemar.aquasample.ui.viewmodel.SampleCreateViewModel
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun PhotoCaptureScreen(
@@ -67,41 +62,19 @@ fun PhotoCaptureScreen(
     onNavigateBack: () -> Unit,
     onNavigateToCount: () -> Unit
 ) {
-    val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val busy = uiState.isSaving || uiState.isPhotoBusy
+    BackHandler(enabled = busy) { }
 
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { successful ->
-        val pendingUri = uiState.pendingPhotoUri?.let(Uri::parse)
-        if (!successful) {
-            pendingUri?.let { deleteUri(context, it) }
-            viewModel.discardPendingPhoto()
-        }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) {
+        viewModel.cameraResult(it)
     }
-
-    val launchCamera = {
-        var temporaryUri: Uri? = null
-        try {
-            val imageDirectory = File(context.filesDir, "images")
-            if (!imageDirectory.exists() && !imageDirectory.mkdirs()) {
-                error("No se pudo crear el directorio de imágenes.")
-            }
-            val temporaryFile = File.createTempFile("sample_photo_", ".jpg", imageDirectory)
-            temporaryUri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                temporaryFile
-            )
-            viewModel.setPendingPhotoUri(temporaryUri.toString())
-            cameraLauncher.launch(temporaryUri)
-        } catch (exception: Exception) {
-            temporaryUri?.let { deleteUri(context, it) }
-            viewModel.discardPendingPhoto()
-            viewModel.setPhotoError(
-                exception.message ?: "No se pudo iniciar la cámara."
-            )
-        }
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { viewModel.importPhoto(it.toString()) }
+    }
+    val launchCamera: () -> Unit = {
+        viewModel.prepareCamera { cameraLauncher.launch(Uri.parse(it)) }
     }
 
     val isPreview = uiState.pendingPhotoUri != null
@@ -112,7 +85,7 @@ fun PhotoCaptureScreen(
             AquaTopBar(
                 title = "Evidencia Fotográfica (Paso 2/4)",
                 canNavigateBack = true,
-                onNavigateBack = onNavigateBack
+                onNavigateBack = { if (!busy) onNavigateBack() }
             )
         },
         containerColor = AquaBackground
@@ -227,7 +200,7 @@ fun PhotoCaptureScreen(
                         ) {
                             Button(
                                 onClick = {
-                                    confirmCapturedPhoto(context, viewModel, uiState.pendingPhotoUri)
+                                    viewModel.confirmPendingPhoto()
                                 },
                                 modifier = Modifier
                                     .weight(1f)
@@ -241,13 +214,11 @@ fun PhotoCaptureScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.size(6.dp))
-                                Text("Confirmar foto", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text(if (uiState.isPhotoBusy) "Guardando…" else "Confirmar foto", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                             }
 
                             OutlinedButton(
                                 onClick = {
-                                    uiState.pendingPhotoUri?.let { deleteUri(context, Uri.parse(it)) }
-                                    viewModel.discardPendingPhoto()
                                     launchCamera()
                                 },
                                 modifier = Modifier
@@ -268,6 +239,7 @@ fun PhotoCaptureScreen(
                     } else {
                         Button(
                             onClick = launchCamera,
+                            enabled = !uiState.isPhotoBusy,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),
@@ -285,6 +257,22 @@ fun PhotoCaptureScreen(
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                try { galleryLauncher.launch("image/*") }
+                                catch (_: android.content.ActivityNotFoundException) {
+                                    viewModel.setPhotoError("No hay un selector de imágenes disponible.")
+                                }
+                            },
+                            enabled = !uiState.isPhotoBusy,
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                        ) {
+                            Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                            Spacer(modifier = Modifier.size(6.dp))
+                            Text("Elegir foto de galería")
                         }
 
                         if (uiState.photoPath != null) {
@@ -312,7 +300,8 @@ fun PhotoCaptureScreen(
             if (!isPreview) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
-                    onClick = onNavigateToCount,
+                    onClick = { if (viewModel.validatePhoto()) onNavigateToCount() },
+                    enabled = !uiState.isPhotoBusy,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
@@ -329,56 +318,4 @@ fun PhotoCaptureScreen(
             }
         }
     }
-}
-
-private fun confirmCapturedPhoto(
-    context: Context,
-    viewModel: SampleCreateViewModel,
-    pendingPhotoUri: String?
-) {
-    if (pendingPhotoUri == null) {
-        viewModel.setPhotoError("No hay una foto pendiente para confirmar.")
-        return
-    }
-
-    var destinationFile: File? = null
-    try {
-        val imageDirectory = File(context.filesDir, "images")
-        val timestamp = SimpleDateFormat("dd-MM-yyyy_HH-mm", Locale.getDefault()).format(Date())
-        var suffix = 0
-        var candidate: File
-        do {
-            val fileName = if (suffix == 0) "$timestamp.jpg" else "${timestamp}_$suffix.jpg"
-            candidate = File(imageDirectory, fileName)
-            suffix++
-        } while (candidate.exists())
-        destinationFile = candidate
-
-        val sourceUri = Uri.parse(pendingPhotoUri)
-        val input = context.contentResolver.openInputStream(sourceUri)
-            ?: error("No se pudo leer la fotografía capturada.")
-        input.use { source ->
-            destinationFile.outputStream().use { target -> source.copyTo(target) }
-        }
-        if (destinationFile.length() == 0L) {
-            error("La fotografía capturada está vacía.")
-        }
-
-        val finalUri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            destinationFile
-        )
-        deleteUri(context, sourceUri)
-        viewModel.confirmPhoto(finalUri.toString())
-    } catch (exception: Exception) {
-        destinationFile?.delete()
-        viewModel.setPhotoError(
-            exception.message ?: "No se pudo guardar la fotografía."
-        )
-    }
-}
-
-private fun deleteUri(context: Context, uri: Uri) {
-    context.contentResolver.delete(uri, null, null)
 }

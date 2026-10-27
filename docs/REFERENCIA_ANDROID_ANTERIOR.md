@@ -1,3 +1,7 @@
+# Referencia anterior a la integración
+
+Documento conservado del repositorio del equipo. Para ejecutar la versión actual, usar [README](../README.md).
+
 # AquaSample · ALDEMAR SpA (Módulo Móvil Android) 📱🌊
 
 Aplicación móvil desarrollada en **Kotlin** y **Jetpack Compose** para la asignatura **DSY1105 - Desarrollo de Aplicaciones Móviles** (Duoc UC), orientada a digitalizar y estandarizar la toma, trazabilidad y revisión técnica de muestras de líneas de cultivo de choritos para la empresa **ALDEMAR SpA**.
