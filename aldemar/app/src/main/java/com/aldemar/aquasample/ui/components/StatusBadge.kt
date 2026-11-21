@@ -12,8 +12,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldemar.aquasample.data.model.SampleStatus
-import com.aldemar.aquasample.ui.theme.StatusAlert
 import com.aldemar.aquasample.ui.theme.StatusAlertBg
+import com.aldemar.aquasample.ui.theme.StatusAlertDark
 import com.aldemar.aquasample.ui.theme.StatusPending
 import com.aldemar.aquasample.ui.theme.StatusPendingBg
 import com.aldemar.aquasample.ui.theme.StatusValidated
@@ -24,7 +24,7 @@ import com.aldemar.aquasample.ui.theme.StatusValidatedBg
  *
  * Aplica la forma de píldora (Pill shape 9999.dp) y los colores semánticos definidos:
  * - VALIDADO: Fondo verde claro (#E8F5E9) con texto verde oscuro (#2E7D32).
- * - OBSERVADO: Fondo naranja claro (#FFF3E0) con texto naranja (#FF6D2D).
+ * - OBSERVADO: Fondo naranja claro (#FFF3E0) con texto naranja oscuro (#B84300, contraste 5:1).
  * - PENDIENTE: Fondo azul claro (#EBF5FF) con texto azul (#00509E).
  */
 @Composable
@@ -34,7 +34,7 @@ fun StatusBadge(
 ) {
     val (bgColor, textColor, borderColor) = when (status) {
         SampleStatus.VALIDADO -> Triple(StatusValidatedBg, StatusValidated, StatusValidated.copy(alpha = 0.3f))
-        SampleStatus.OBSERVADO -> Triple(StatusAlertBg, StatusAlert, StatusAlert.copy(alpha = 0.4f))
+        SampleStatus.OBSERVADO -> Triple(StatusAlertBg, StatusAlertDark, StatusAlertDark.copy(alpha = 0.4f))
         SampleStatus.PENDIENTE -> Triple(StatusPendingBg, StatusPending, StatusPending.copy(alpha = 0.3f))
     }
 

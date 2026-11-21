@@ -66,8 +66,8 @@ import com.aldemar.aquasample.ui.theme.AquaSecondary
 import com.aldemar.aquasample.ui.theme.AquaSurface
 import com.aldemar.aquasample.ui.theme.AquaTextPrimary
 import com.aldemar.aquasample.ui.theme.AquaTextSecondary
-import com.aldemar.aquasample.ui.theme.StatusAlert
 import com.aldemar.aquasample.ui.theme.StatusAlertBg
+import com.aldemar.aquasample.ui.theme.StatusAlertDark
 import com.aldemar.aquasample.ui.viewmodel.AuthUiState
 import com.aldemar.aquasample.ui.viewmodel.SampleListViewModel
 
@@ -408,14 +408,14 @@ fun SampleCardItem(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Comment,
                         contentDescription = null,
-                        tint = StatusAlert,
+                        tint = StatusAlertDark,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = sample.supervisorComment,
                         fontSize = 11.sp,
-                        color = StatusAlert,
+                        color = StatusAlertDark,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

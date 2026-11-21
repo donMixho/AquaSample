@@ -29,5 +29,16 @@ val StatusValidated = Color(0xFF2E7D32)
 val StatusValidatedBg = Color(0xFFE8F5E9)
 val StatusAlert = Color(0xFFFF6D2D)
 val StatusAlertBg = Color(0xFFFFF3E0)
+
+// Naranja oscuro para TEXTO y botones de alerta (contraste >= 4.5:1 sobre blanco y sobre StatusAlertBg).
+// StatusAlert (#FF6D2D) solo da 2.8:1, por eso se reserva para iconos y bordes decorativos.
+val StatusAlertDark = Color(0xFFB84300)
+
+// Fondo de botones secundarios/tonales: azul claro con texto AquaPrimary (contraste > 6:1).
+val AquaTonalContainer = Color(0xFFD9EAFB)
+
+// Botones deshabilitados: gris medio con texto gris oscuro (legible, no gris sobre gris).
+val AquaDisabledContainer = Color(0xFFCFD4DA)
+val AquaDisabledContent = Color(0xFF4B5563)
 val StatusPending = Color(0xFF00509E)
 val StatusPendingBg = Color(0xFFEBF5FF)

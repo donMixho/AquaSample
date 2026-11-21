@@ -43,6 +43,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.aldemar.aquasample.data.model.UserRole
 import com.aldemar.aquasample.data.model.SampleStatus
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import com.aldemar.aquasample.ui.components.AquaButtonColors
 import com.aldemar.aquasample.ui.components.AquaTopBar
 import com.aldemar.aquasample.ui.components.StatusBadge
 import com.aldemar.aquasample.ui.screens.sample.SummaryRow
@@ -53,7 +56,7 @@ import com.aldemar.aquasample.ui.theme.AquaSecondary
 import com.aldemar.aquasample.ui.theme.AquaSurface
 import com.aldemar.aquasample.ui.theme.AquaTextPrimary
 import com.aldemar.aquasample.ui.theme.AquaTextSecondary
-import com.aldemar.aquasample.ui.theme.StatusAlert
+import com.aldemar.aquasample.ui.theme.StatusAlertDark
 import com.aldemar.aquasample.ui.theme.StatusValidated
 import com.aldemar.aquasample.ui.viewmodel.AuthUiState
 import com.aldemar.aquasample.ui.viewmodel.SupervisorReviewViewModel
@@ -114,6 +117,10 @@ fun SupervisorReviewScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
+                    // El teclado ya no tapa el comentario: se reserva su altura y el scroll
+                    // sigue el cursor. consumeWindowInsets evita duplicar el borde inferior.
+                    .consumeWindowInsets(paddingValues)
+                    .imePadding()
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
@@ -235,9 +242,10 @@ fun SupervisorReviewScreen(
                             onValueChange = { viewModel.updateComment(it) },
                             label = { Text("Comentario o Instrucción Técnica") },
                             placeholder = { Text("Ej: Conteo consistente con la curva de crecimiento...") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp),
+                            // Altura flexible: crece al escribir para que todo el texto sea visible.
+                            minLines = 3,
+                            maxLines = 8,
+                            modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = AquaSecondary,
@@ -267,7 +275,7 @@ fun SupervisorReviewScreen(
                                     .weight(1f)
                                     .height(48.dp),
                                 shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = StatusAlert)
+                                colors = AquaButtonColors.filled(StatusAlertDark)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.ErrorOutline,
@@ -298,7 +306,7 @@ fun SupervisorReviewScreen(
                                     .weight(1f)
                                     .height(48.dp),
                                 shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = StatusValidated)
+                                colors = AquaButtonColors.filled(StatusValidated)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,

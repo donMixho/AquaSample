@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.aldemar.aquasample.ui.components.AquaButtonColors
 import com.aldemar.aquasample.ui.components.AquaTopBar
 import com.aldemar.aquasample.ui.theme.AquaBackground
 import com.aldemar.aquasample.ui.theme.AquaOutline
@@ -52,7 +53,7 @@ import com.aldemar.aquasample.ui.theme.AquaSecondary
 import com.aldemar.aquasample.ui.theme.AquaSurface
 import com.aldemar.aquasample.ui.theme.AquaTextPrimary
 import com.aldemar.aquasample.ui.theme.AquaTextSecondary
-import com.aldemar.aquasample.ui.theme.StatusAlert
+import com.aldemar.aquasample.ui.theme.StatusAlertDark
 import com.aldemar.aquasample.ui.theme.StatusValidated
 import com.aldemar.aquasample.ui.viewmodel.SampleCreateViewModel
 
@@ -186,7 +187,7 @@ fun PhotoCaptureScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = uiState.photoErrorMessage.orEmpty(),
-                            color = StatusAlert,
+                            color = StatusAlertDark,
                             fontSize = 12.sp
                         )
                     }
@@ -206,7 +207,7 @@ fun PhotoCaptureScreen(
                                     .weight(1f)
                                     .height(48.dp),
                                 shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
+                                colors = AquaButtonColors.filled()
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
@@ -244,7 +245,7 @@ fun PhotoCaptureScreen(
                                 .fillMaxWidth()
                                 .height(48.dp),
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
+                            colors = AquaButtonColors.filled()
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CameraAlt,
@@ -306,7 +307,7 @@ fun PhotoCaptureScreen(
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
+                    colors = AquaButtonColors.filled()
                 ) {
                     Text(
                         text = "Siguiente: Conteo y Observaciones ➔",

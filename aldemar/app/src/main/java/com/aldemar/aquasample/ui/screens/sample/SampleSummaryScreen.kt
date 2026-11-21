@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.aldemar.aquasample.data.model.SampleStatus
+import com.aldemar.aquasample.ui.components.AquaButtonColors
 import com.aldemar.aquasample.ui.components.AquaTopBar
 import com.aldemar.aquasample.ui.components.StatusBadge
 import com.aldemar.aquasample.ui.theme.AquaBackground
@@ -226,7 +227,7 @@ fun SampleSummaryScreen(
                     .fillMaxWidth()
                     .height(48.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
+                colors = AquaButtonColors.filledKeepOnDisabled()
             ) {
                 if (uiState.isSaving) {
                     CircularProgressIndicator(

@@ -40,6 +40,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import com.aldemar.aquasample.ui.components.AquaButtonColors
 import com.aldemar.aquasample.ui.components.AquaTopBar
 import com.aldemar.aquasample.ui.theme.AquaBackground
 import com.aldemar.aquasample.ui.theme.AquaOutline
@@ -85,6 +88,10 @@ fun CountObservationsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                // El teclado ya no tapa los campos: se reserva su altura y el scroll
+                // sigue el cursor. consumeWindowInsets evita duplicar el borde inferior.
+                .consumeWindowInsets(paddingValues)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
@@ -161,14 +168,16 @@ fun CountObservationsScreen(
                     ) {
                         FilledTonalButton(
                             onClick = { viewModel.incrementCount(-10) },
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            colors = AquaButtonColors.tonal()
                         ) {
                             Text("-10", fontWeight = FontWeight.Bold)
                         }
 
                         FilledTonalButton(
                             onClick = { viewModel.incrementCount(-1) },
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            colors = AquaButtonColors.tonal()
                         ) {
                             Icon(Icons.Default.Remove, contentDescription = "Menos 1")
                         }
@@ -176,7 +185,7 @@ fun CountObservationsScreen(
                         Button(
                             onClick = { viewModel.incrementCount(1) },
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
+                            colors = AquaButtonColors.filled()
                         ) {
                             Icon(Icons.Default.Add, contentDescription = "Más 1")
                         }
@@ -184,7 +193,7 @@ fun CountObservationsScreen(
                         Button(
                             onClick = { viewModel.incrementCount(10) },
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
+                            colors = AquaButtonColors.filled()
                         ) {
                             Text("+10", fontWeight = FontWeight.Bold)
                         }
@@ -192,7 +201,7 @@ fun CountObservationsScreen(
                         Button(
                             onClick = { viewModel.incrementCount(50) },
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = AquaPrimaryVariant)
+                            colors = AquaButtonColors.filled(AquaPrimaryVariant)
                         ) {
                             Text("+50", fontWeight = FontWeight.Bold)
                         }
@@ -247,9 +256,10 @@ fun CountObservationsScreen(
                         value = uiState.observations,
                         onValueChange = { viewModel.updateObservations(it) },
                         placeholder = { Text("Ej: Buena fijación de biso, calibre uniforme ~45mm, baja presencia de chorito picoroco...") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(110.dp),
+                        // Altura flexible: crece al escribir para que todo el texto sea visible.
+                        minLines = 4,
+                        maxLines = 8,
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = AquaSecondary,
@@ -268,7 +278,7 @@ fun CountObservationsScreen(
                     .fillMaxWidth()
                     .height(48.dp),
                 shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
+                colors = AquaButtonColors.filled()
             ) {
                 Text(
                     text = "Siguiente: Resumen de Muestra ➔",

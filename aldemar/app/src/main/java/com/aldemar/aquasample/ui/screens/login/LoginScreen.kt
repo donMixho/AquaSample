@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldemar.aquasample.R
 import com.aldemar.aquasample.data.model.UserRole
+import com.aldemar.aquasample.ui.components.AquaButtonColors
 import com.aldemar.aquasample.ui.theme.AquaBackground
 import com.aldemar.aquasample.ui.theme.AquaOutline
 import com.aldemar.aquasample.ui.theme.AquaPrimary
@@ -126,6 +128,9 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(AquaBackground)
+            // Respeta barras del sistema y teclado: la tarjeta (con scroll) se encoge
+            // en vez de quedar tapada por el teclado.
+            .safeDrawingPadding()
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -318,7 +323,7 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AquaPrimary)
+                    colors = AquaButtonColors.filledKeepOnDisabled()
                 ) {
                     if (authUiState.isLoading) {
                         CircularProgressIndicator(
