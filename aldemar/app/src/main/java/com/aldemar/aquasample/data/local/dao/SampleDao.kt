@@ -8,15 +8,13 @@ import androidx.room.Update
 import androidx.room.Transaction
 import com.aldemar.aquasample.data.local.entity.CenterEntity
 import com.aldemar.aquasample.data.local.entity.SampleEntity
+import com.aldemar.aquasample.data.model.SampleStatus
+import com.aldemar.aquasample.data.model.SyncStatus
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Data Access Object (DAO) para operaciones sobre SQLite mediante Room.
- *
- * Principios aplicados:
- * - Operaciones asíncronas con 'suspend' para no bloquear el hilo principal (UI Thread).
- * - Reactividad con 'Flow<List<T>>': La UI de Jetpack Compose se actualiza automáticamente
- *   cada vez que se inserta o modifica un registro en la base de datos sin recargar manualmente.
+ * DAO de muestras y centros. Operaciones 'suspend' y 'Flow' para no bloquear la UI
+ * y que Compose reaccione a los cambios en la base.
  */
 @Dao
 interface SampleDao {
@@ -34,60 +32,68 @@ interface SampleDao {
         if (getSampleCount() == 0) insertSamples(samples)
     }
 
-
-    /**
-     * Obtiene el listado completo de muestras ordenadas cronológicamente (las más recientes primero).
-     * Retorna Flow para que la interfaz reaccione en tiempo real.
-     */
-    @Query("SELECT * FROM samples ORDER BY createdAt DESC")
+    /** Todas las muestras, las más recientes primero. */
+    @Query("SELECT * FROM samples ORDER BY timestamp DESC")
     fun getAllSamples(): Flow<List<SampleEntity>>
 
-    /**
-     * Consulta reactiva de una muestra específica por su ID primario.
-     */
     @Query("SELECT * FROM samples WHERE id = :id LIMIT 1")
     fun getSampleById(id: Long): Flow<SampleEntity?>
 
-    /**
-     * Consulta directa de un solo tiro (one-shot) para comprobaciones puntuales.
-     */
     @Query("SELECT * FROM samples WHERE id = :id LIMIT 1")
     suspend fun getSampleByIdOnce(id: Long): SampleEntity?
 
-    /**
-     * Inserta una nueva muestra tomada en terreno y retorna el ID autogenerado.
-     */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSample(sample: SampleEntity): Long
 
-    /**
-     * Inserta un conjunto de muestras (usado para precargar la base de datos de prueba).
-     */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSamples(samples: List<SampleEntity>)
 
-    /**
-     * Actualiza todos los campos de una muestra existente.
-     */
     @Update
     suspend fun updateSample(sample: SampleEntity)
 
     /**
-     * Actualiza puntualmente el estado de revisión y dictamen técnico emitido por el supervisor.
+     * Dictamen del supervisor. El registro cambió localmente, por eso también fija
+     * [syncStatus] (el repositorio pasa PENDIENTE_SINCRONIZACION).
      */
-    @Query("UPDATE samples SET status = :status, supervisorComment = :comment, supervisorName = :supervisorName WHERE id = :id")
-    suspend fun updateStatus(id: Long, status: String, comment: String?, supervisorName: String?)
+    @Query("UPDATE samples SET reviewStatus = :status, supervisorComment = :comment, supervisorName = :supervisorName, syncStatus = :syncStatus WHERE id = :id")
+    suspend fun updateReview(id: Long, status: SampleStatus, comment: String?, supervisorName: String?, syncStatus: SyncStatus)
 
     /**
-     * Permite comprobar si la tabla ya tiene datos o si es la primera apertura de la app.
+     * Filtros combinables (null = sin restricción). Fechas inclusivas, en ms.
+     * Centro, tren y línea se comparan sin distinguir mayúsculas.
      */
+    @Query("""
+        SELECT * FROM samples
+        WHERE (:center IS NULL OR center = :center COLLATE NOCASE)
+          AND (:train IS NULL OR train = :train COLLATE NOCASE)
+          AND (:line IS NULL OR line = :line COLLATE NOCASE)
+          AND (:status IS NULL OR reviewStatus = :status)
+          AND (:startDate IS NULL OR timestamp >= :startDate)
+          AND (:endDate IS NULL OR timestamp <= :endDate)
+        ORDER BY timestamp DESC
+    """)
+    fun filterSamples(
+        center: String?, train: String?, line: String?, status: SampleStatus?,
+        startDate: Long?, endDate: Long?
+    ): Flow<List<SampleEntity>>
+
+    // ---- Sincronización offline ----
+    @Query("SELECT * FROM samples WHERE syncStatus = :status ORDER BY timestamp ASC")
+    fun getBySyncStatus(status: SyncStatus): Flow<List<SampleEntity>>
+
+    @Query("SELECT * FROM samples WHERE syncStatus = :status ORDER BY timestamp ASC")
+    suspend fun getBySyncStatusOnce(status: SyncStatus): List<SampleEntity>
+
+    @Query("SELECT COUNT(*) FROM samples WHERE syncStatus = :status")
+    fun countBySyncStatus(status: SyncStatus): Flow<Int>
+
+    @Query("UPDATE samples SET syncStatus = :status WHERE id = :id")
+    suspend fun updateSyncStatus(id: Long, status: SyncStatus)
+
     @Query("SELECT COUNT(*) FROM samples")
     suspend fun getSampleCount(): Int
 
-    // ==========================================
-    // Consultas para Catálogo de Centros
-    // ==========================================
-
+    // ---- Catálogo de centros ----
     @Query("SELECT * FROM centers ORDER BY name ASC")
     fun getAllCenters(): Flow<List<CenterEntity>>
 

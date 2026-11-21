@@ -19,7 +19,7 @@ class AuthViewModelTest {
     @After fun tearDown() { store.clear(); Dispatchers.resetMain() }
 
     private class FakeAuth : AuthRepository {
-        var account = AuthAccount("uid-test", "Persona de prueba", "test@example.invalid", UserRole.OPERADOR)
+        var account = AuthAccount("uid-test", "Persona de prueba", "test@example.invalid", UserRole.OPERATOR)
         var restored: AuthAccount? = null
         var failure: Exception? = null
         var pending: CompletableDeferred<AuthAccount>? = null
@@ -55,7 +55,7 @@ class AuthViewModelTest {
         vm.loginWithFirebase(" test@example.invalid ", "test-pass"); runCurrent()
         assertEquals("test@example.invalid", repo.capturedEmail)
         assertEquals("uid-test", vm.uiState.value.userId)
-        assertEquals(UserRole.OPERADOR, vm.uiState.value.currentRole)
+        assertEquals(UserRole.OPERATOR, vm.uiState.value.currentRole)
         assertFalse(vm.uiState.value.isDemo)
     }
     @Test fun supervisorRoleComesFromProviderAndRestores() = runTest(dispatcher) {
@@ -73,7 +73,7 @@ class AuthViewModelTest {
         runCurrent()
         assertEquals(1, repo.loginCalls); assertTrue(vm.uiState.value.isLoading)
         repo.pending!!.complete(repo.account); runCurrent()
-        assertEquals(UserRole.OPERADOR, vm.uiState.value.currentRole)
+        assertEquals(UserRole.OPERATOR, vm.uiState.value.currentRole)
         assertFalse(vm.uiState.value.isDemo)
     }
     @Test fun failedLoginClearsSessionAndCanRetry() = runTest(dispatcher) {
@@ -111,12 +111,12 @@ class AuthViewModelTest {
         vm.registerWithFirebase("test@example.invalid", "test-pass", " Persona "); runCurrent()
         assertEquals(1, repo.registerCalls)
         assertEquals("Persona", vm.uiState.value.currentUserName)
-        assertEquals(UserRole.OPERADOR, vm.uiState.value.currentRole)
+        assertEquals(UserRole.OPERATOR, vm.uiState.value.currentRole)
     }
     @Test fun onlyExactTrustedSupervisorClaimGrantsPermission() {
         assertEquals(UserRole.SUPERVISOR, RolePolicy.fromClaims(mapOf("role" to "SUPERVISOR")))
         for (claims in listOf(emptyMap(), mapOf("role" to "supervisor"), mapOf("role" to true), mapOf("admin" to true))) {
-            assertEquals(UserRole.OPERADOR, RolePolicy.fromClaims(claims))
+            assertEquals(UserRole.OPERATOR, RolePolicy.fromClaims(claims))
         }
     }
 }

@@ -14,9 +14,9 @@ class DemoIsolationTest {
     @Test fun demonstrationSampleNeverAppearsInRealDatabase() = runBlocking {
         val app = ApplicationProvider.getApplicationContext<AquaSampleApp>()
         val code = "DEMO-TEST-${UUID.randomUUID()}"
-        val id = app.demoRepository.insertSample(SampleEntity(code = code, centerName = "Prueba",
-            trainNumber = "1", lineNumber = "1", sampleDate = "26-10-2026", sectionLengthMeters = 1.0,
-            operatorName = "Prueba", musselCount = 0, observations = "Prueba de aislamiento"))
+        val id = app.demoRepository.insertSample(SampleEntity(code = code, center = "Prueba",
+            train = "1", line = "1", timestamp = System.currentTimeMillis(), sectionLengthCm = 100,
+            operatorName = "Prueba", manualCount = 0, observations = "Prueba de aislamiento"))
         assertNotNull(app.demoDatabase.sampleDao().getSampleByIdOnce(id))
         assertNull(app.database.sampleDao().findIdByCode(code))
         assertNotEquals(app.demoDatabase.openHelper.databaseName, app.database.openHelper.databaseName)

@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.aldemar.aquasample.backend.SampleApiTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.971 s -- in com.aldemar.aquasample.backend.SampleApiTest

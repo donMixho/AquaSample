@@ -58,7 +58,7 @@ import com.aldemar.aquasample.ui.viewmodel.SampleCreateViewModel
  *
  * Propósito:
  * - Registrar la jerarquía de trazabilidad: Centro de Cultivo, Tren y Línea.
- * - Captura la longitud del tramo muestreado en metros (generalmente 1.0 metro de cuerda).
+ * - Captura la longitud del tramo muestreado en centímetros (generalmente 100 cm de cuerda) y la concesión (opcional).
  * - Asigna el operador responsable y fecha automática.
  * - Barra de progreso que indica que estamos en el 25% del proceso de toma de muestra.
  */
@@ -177,6 +177,24 @@ fun NewSampleScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // Concesión (opcional)
+                    OutlinedTextField(
+                        value = uiState.concession,
+                        onValueChange = { viewModel.updateConcession(it) },
+                        label = { Text("Concesión (opcional)") },
+                        isError = uiState.fieldErrors.containsKey("concession"),
+                        supportingText = { Text(uiState.fieldErrors["concession"] ?: "Ej: Concesión Calbuco Norte. Puede dejarse vacío.") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AquaSecondary,
+                            unfocusedBorderColor = AquaOutline
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     // Tren y Línea
                     Row(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
@@ -216,13 +234,14 @@ fun NewSampleScreen(
 
                     // Longitud del tramo muestreado
                     OutlinedTextField(
-                        value = uiState.sectionLengthMeters,
+                        value = uiState.sectionLengthCm,
                         onValueChange = { viewModel.updateSectionLength(it) },
-                        label = { Text("Longitud del Tramo Muestreado (Metros) *") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            isError = uiState.fieldErrors.containsKey("length"),
-                            supportingText = { uiState.fieldErrors["length"]?.let { Text(it) } },
-                        placeholder = { Text("1.0") },
+                        label = { Text("Longitud del Tramo Muestreado (cm) *") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = uiState.fieldErrors.containsKey("length"),
+                        supportingText = { Text(uiState.fieldErrors["length"] ?: "Centímetros enteros. Referencia: 100 cm = 1 m de cuerda.") },
+                        suffix = { Text("cm") },
+                        placeholder = { Text("100") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),

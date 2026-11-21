@@ -56,8 +56,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldemar.aquasample.data.local.entity.SampleEntity
 import com.aldemar.aquasample.data.model.SampleStatus
-import com.aldemar.aquasample.data.model.UserRole
+import com.aldemar.aquasample.ui.viewmodel.SampleFormat
 import com.aldemar.aquasample.ui.components.AquaTopBar
+import com.aldemar.aquasample.ui.components.DateField
+import com.aldemar.aquasample.ui.components.ExportMenuButton
+import com.aldemar.aquasample.ui.components.FilterDropdown
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import com.aldemar.aquasample.ui.components.StatusBadge
 import com.aldemar.aquasample.ui.theme.AquaBackground
 import com.aldemar.aquasample.ui.theme.AquaOutline
@@ -89,6 +97,8 @@ fun HomeScreen(
     viewModel: SampleListViewModel,
     onNavigateToNewSample: () -> Unit,
     onNavigateToReview: (Long) -> Unit,
+    onNavigateToDashboard: () -> Unit,
+    onNavigateToCompare: () -> Unit,
     onLogout: () -> Unit
 ) {
     val listState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -97,6 +107,13 @@ fun HomeScreen(
     val selectedCenter by viewModel.selectedCenterFilter.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedStatus by viewModel.selectedStatusFilter.collectAsStateWithLifecycle()
+    val selectedTrain by viewModel.selectedTrain.collectAsStateWithLifecycle()
+    val selectedLine by viewModel.selectedLine.collectAsStateWithLifecycle()
+    val startDate by viewModel.startDate.collectAsStateWithLifecycle()
+    val endDate by viewModel.endDate.collectAsStateWithLifecycle()
+    val trains by viewModel.trains.collectAsStateWithLifecycle()
+    val lineOptions by viewModel.lines.collectAsStateWithLifecycle()
+    var showAdvanced by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
 
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -115,11 +132,21 @@ fun HomeScreen(
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
                         Text(
-                            text = if (authUiState.currentRole == UserRole.SUPERVISOR) "Supervisor" else "Operador",
+                            text = authUiState.currentRole.shortLabel,
                             color = AquaSurface,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         )
+                        IconButton(onClick = onNavigateToDashboard) {
+                            Icon(Icons.Default.Dashboard, contentDescription = "Dashboard", tint = AquaSurface)
+                        }
+                        IconButton(onClick = onNavigateToCompare) {
+                            Icon(Icons.Default.CompareArrows, contentDescription = "Comparar períodos", tint = AquaSurface)
+                        }
+                        if (authUiState.currentRole.canExport) {
+                            // Exporta las validadas del listado visible (respeta los filtros activos).
+                            ExportMenuButton(samples) { viewModel.showMessage(it) }
+                        }
                         IconButton(onClick = onLogout) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ExitToApp,
@@ -133,7 +160,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             // Solo los operadores ven el botón flotante para crear muestras en terreno
-            if (authUiState.currentRole == UserRole.OPERADOR) {
+            if (authUiState.currentRole.canCreateSamples) {
                 ExtendedFloatingActionButton(
                     onClick = onNavigateToNewSample,
                     containerColor = AquaPrimary,
@@ -152,6 +179,8 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(12.dp))
+            com.aldemar.aquasample.ui.components.MarineConditionsCard()
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Buscador en tiempo real
             OutlinedTextField(
@@ -203,8 +232,8 @@ fun HomeScreen(
                 }
                 item {
                     FilterChip(
-                        selected = selectedStatus == SampleStatus.PENDIENTE,
-                        onClick = { viewModel.setStatusFilter(SampleStatus.PENDIENTE) },
+                        selected = selectedStatus == SampleStatus.PENDIENTE_REVISION,
+                        onClick = { viewModel.setStatusFilter(SampleStatus.PENDIENTE_REVISION) },
                         label = { Text("Pendientes") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AquaPrimary,
@@ -214,8 +243,8 @@ fun HomeScreen(
                 }
                 item {
                     FilterChip(
-                        selected = selectedStatus == SampleStatus.VALIDADO,
-                        onClick = { viewModel.setStatusFilter(SampleStatus.VALIDADO) },
+                        selected = selectedStatus == SampleStatus.VALIDADA,
+                        onClick = { viewModel.setStatusFilter(SampleStatus.VALIDADA) },
                         label = { Text("Validados") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AquaPrimary,
@@ -225,8 +254,8 @@ fun HomeScreen(
                 }
                 item {
                     FilterChip(
-                        selected = selectedStatus == SampleStatus.OBSERVADO,
-                        onClick = { viewModel.setStatusFilter(SampleStatus.OBSERVADO) },
+                        selected = selectedStatus == SampleStatus.OBSERVADA,
+                        onClick = { viewModel.setStatusFilter(SampleStatus.OBSERVADA) },
                         label = { Text("Observados") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = AquaPrimary,
@@ -246,7 +275,21 @@ fun HomeScreen(
                         onClick = { viewModel.setCenterFilter(center.name) }, label = { Text(center.name) })
                 }
             }
-            if (searchQuery.isNotBlank() || selectedStatus != null || selectedCenter != null) {
+            TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                Text(if (showAdvanced) "Ocultar filtros avanzados" else "Filtros avanzados (tren, línea, fechas)")
+            }
+            if (showAdvanced) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    FilterDropdown("Tren", trains, selectedTrain, viewModel::setTrainFilter)
+                    FilterDropdown("Línea", lineOptions, selectedLine, viewModel::setLineFilter)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    DateField("Desde", startDate, viewModel::setStartDate, endOfDay = false)
+                    DateField("Hasta", endDate, viewModel::setEndDate, endOfDay = true)
+                }
+            }
+            if (searchQuery.isNotBlank() || selectedStatus != null || selectedCenter != null ||
+                selectedTrain != null || selectedLine != null || startDate != null || endDate != null) {
                 TextButton(onClick = viewModel::clearFilters) { Text("Limpiar búsqueda y filtros") }
             }
             // Indicador de cantidad de resultados
@@ -330,7 +373,7 @@ fun SampleCardItem(
                     fontSize = 14.sp,
                     color = AquaPrimary
                 )
-                StatusBadge(status = SampleStatus.fromString(sample.status))
+                StatusBadge(status = sample.reviewStatus)
             }
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -345,7 +388,7 @@ fun SampleCardItem(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = sample.centerName,
+                    text = sample.center,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = AquaTextPrimary
@@ -365,7 +408,7 @@ fun SampleCardItem(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "${sample.trainNumber} · ${sample.lineNumber} (Tramo: ${sample.sectionLengthMeters}m)",
+                    text = "${sample.train} · ${sample.line} (Tramo: ${SampleFormat.lengthLabel(sample.sectionLengthCm)})",
                     fontSize = 13.sp,
                     color = AquaTextSecondary
                 )
@@ -383,7 +426,7 @@ fun SampleCardItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Conteo: ${sample.musselCount} individuos",
+                    text = "Conteo: ${sample.manualCount} individuos",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = AquaTextPrimary
@@ -438,7 +481,7 @@ fun SampleCardItem(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = sample.sampleDate,
+                        text = SampleFormat.dateTime(sample.timestamp),
                         fontSize = 11.sp,
                         color = AquaTextSecondary
                     )

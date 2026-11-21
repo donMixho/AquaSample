@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SampleController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">aquasample-backend</a> &gt; <a href="index.source.html" class="el_package">com.aldemar.aquasample.backend</a> &gt; <span class="el_source">SampleController.java</span></div><h1>SampleController.java</h1><pre class="source lang-java linenums">package com.aldemar.aquasample.backend;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+@RestController
+@RequestMapping(&quot;/api/samples&quot;)
+@Tag(name = &quot;Samples&quot;, description = &quot;Muestras de AquaSample (sincronización offline desde la app)&quot;)
+public class SampleController {
+    private final SampleRepository repo;
+
+<span class="fc" id="L19">    public SampleController(SampleRepository repo) { this.repo = repo; }</span>
+
+    @Operation(summary = &quot;Lista muestras con filtros opcionales&quot;)
+    @GetMapping
+    public List&lt;SampleDto&gt; list(@RequestParam(required = false) String center,
+                                @RequestParam(required = false) String train,
+                                @RequestParam(required = false) String line,
+                                @RequestParam(required = false) String reviewStatus) {
+<span class="fc" id="L27">        SampleStatus st = null;</span>
+<span class="pc bpc" id="L28" title="1 of 4 branches missed.">        if (reviewStatus != null &amp;&amp; !reviewStatus.isBlank()) {</span>
+<span class="fc" id="L29">            st = SampleStatus.parse(reviewStatus);</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">            if (st == null) throw bad(&quot;reviewStatus inválido: &quot; + reviewStatus);</span>
+        }
+<span class="fc" id="L32">        return repo.search(blank(center), blank(train), blank(line), st).stream().map(SampleDto::from).toList();</span>
+    }
+
+    @Operation(summary = &quot;Solo muestras VALIDADA (reportes)&quot;)
+    @GetMapping(&quot;/validated&quot;)
+    public List&lt;SampleDto&gt; validated() {
+<span class="fc" id="L38">        return repo.search(null, null, null, SampleStatus.VALIDADA).stream().map(SampleDto::from).toList();</span>
+    }
+
+    @Operation(summary = &quot;Detalle por código único&quot;)
+    @GetMapping(&quot;/{code}&quot;)
+<span class="fc" id="L43">    public SampleDto get(@PathVariable String code) { return SampleDto.from(find(code)); }</span>
+
+    @Operation(summary = &quot;Crea muestra; 409 si el code ya existe&quot;)
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public SampleDto create(@Valid @RequestBody SampleDto dto) {
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        if (repo.findByCode(dto.code()).isPresent()) throw conflict(dto.code());</span>
+<span class="fc" id="L50">        SampleRecord r = new SampleRecord();</span>
+<span class="fc" id="L51">        r.setCode(dto.code());</span>
+<span class="fc" id="L52">        apply(r, dto);</span>
+        try {
+<span class="fc" id="L54">            return SampleDto.from(repo.saveAndFlush(r));</span>
+<span class="nc" id="L55">        } catch (DataIntegrityViolationException e) { // carrera entre dos POST simultáneos</span>
+<span class="nc" id="L56">            throw conflict(dto.code());</span>
+        }
+    }
+
+    @Operation(summary = &quot;Actualiza muestra existente; 404 si no existe&quot;)
+    @PutMapping(&quot;/{code}&quot;)
+    public SampleDto update(@PathVariable String code, @Valid @RequestBody SampleDto dto) {
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if (!code.equals(dto.code())) throw bad(&quot;El code del cuerpo no coincide con la URL&quot;);</span>
+<span class="fc" id="L64">        SampleRecord r = find(code);</span>
+<span class="fc" id="L65">        apply(r, dto);</span>
+<span class="fc" id="L66">        return SampleDto.from(repo.save(r));</span>
+    }
+
+    @Operation(summary = &quot;Cambia el estado de revisión (solo SUPERVISOR)&quot;,
+            description = &quot;Header X-User-Role: OPERATOR | SUPERVISOR | ANALYST. Si falta se asume SUPERVISOR (pruebas rápidas); &quot;
+                    + &quot;valores desconocidos se tratan como OPERATOR. OPERATOR y ANALYST reciben 403.&quot;)
+    @PutMapping(&quot;/{code}/review&quot;)
+    public SampleDto review(@PathVariable String code,
+                            @Parameter(description = &quot;Rol del usuario&quot;) @RequestHeader(value = &quot;X-User-Role&quot;, required = false) String role,
+                            @Valid @RequestBody ReviewDto dto) {
+<span class="pc bpc" id="L76" title="1 of 4 branches missed.">        String effective = role == null || role.isBlank() ? &quot;SUPERVISOR&quot; : role.trim().toUpperCase();</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (!effective.equals(&quot;SUPERVISOR&quot;))</span>
+<span class="fc" id="L78">            throw new ResponseStatusException(HttpStatus.FORBIDDEN, &quot;Solo el SUPERVISOR puede revisar muestras&quot;);</span>
+<span class="fc" id="L79">        SampleStatus st = SampleStatus.parse(dto.reviewStatus());</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        if (st == null) throw bad(&quot;reviewStatus inválido: &quot; + dto.reviewStatus());</span>
+<span class="fc" id="L81">        SampleRecord r = find(code);</span>
+<span class="fc" id="L82">        r.setReviewStatus(st);</span>
+<span class="fc" id="L83">        r.setSupervisorComment(dto.supervisorComment());</span>
+<span class="fc" id="L84">        r.setSupervisorName(dto.supervisorName());</span>
+<span class="fc" id="L85">        return SampleDto.from(repo.save(r));</span>
+    }
+
+    private SampleRecord find(String code) {
+<span class="fc" id="L89">        return repo.findByCode(code).orElseThrow(</span>
+<span class="fc" id="L90">                () -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;Muestra no encontrada: &quot; + code));</span>
+    }
+
+<span class="fc" id="L93">    private static ResponseStatusException bad(String msg) { return new ResponseStatusException(HttpStatus.BAD_REQUEST, msg); }</span>
+
+    private static ResponseStatusException conflict(String code) {
+<span class="fc" id="L96">        return new ResponseStatusException(HttpStatus.CONFLICT, &quot;Ya existe una muestra con code &quot; + code);</span>
+    }
+
+<span class="fc bfc" id="L99" title="All 4 branches covered.">    private static String blank(String s) { return s == null || s.isBlank() ? null : s.trim(); }</span>
+
+    private static void apply(SampleRecord r, SampleDto d) {
+<span class="fc" id="L102">        r.setConcession(d.concession());</span>
+<span class="fc" id="L103">        r.setCenter(d.center());</span>
+<span class="fc" id="L104">        r.setTrain(d.train());</span>
+<span class="fc" id="L105">        r.setLine(d.line());</span>
+<span class="fc" id="L106">        r.setSectionLengthCm(d.sectionLengthCm());</span>
+<span class="fc" id="L107">        r.setTimestamp(d.timestamp());</span>
+<span class="fc" id="L108">        r.setOperatorName(d.operatorName());</span>
+<span class="fc" id="L109">        r.setManualCount(d.manualCount());</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">        r.setMarkerCoordinatesJson(d.markerCoordinatesJson() == null ? &quot;[]&quot; : d.markerCoordinatesJson());</span>
+<span class="fc" id="L111">        r.setObservations(d.observations());</span>
+<span class="fc" id="L112">        r.setPhotoPath(d.photoPath());</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        if (d.reviewStatus() != null) {</span>
+<span class="fc" id="L114">            SampleStatus st = SampleStatus.parse(d.reviewStatus());</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">            if (st == null) throw bad(&quot;reviewStatus inválido: &quot; + d.reviewStatus());</span>
+<span class="fc" id="L116">            r.setReviewStatus(st);</span>
+        }
+<span class="fc" id="L118">        r.setSupervisorComment(d.supervisorComment());</span>
+<span class="fc" id="L119">        r.setSupervisorName(d.supervisorName());</span>
+<span class="fc" id="L120">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

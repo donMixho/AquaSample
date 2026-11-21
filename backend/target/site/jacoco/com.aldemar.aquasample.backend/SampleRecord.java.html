@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SampleRecord.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">aquasample-backend</a> &gt; <a href="index.source.html" class="el_package">com.aldemar.aquasample.backend</a> &gt; <span class="el_source">SampleRecord.java</span></div><h1>SampleRecord.java</h1><pre class="source lang-java linenums">package com.aldemar.aquasample.backend;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = &quot;sample_record&quot;, uniqueConstraints = @UniqueConstraint(name = &quot;uq_sample_code&quot;, columnNames = &quot;code&quot;))
+<span class="fc" id="L7">public class SampleRecord {</span>
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false, length = 40)
+    private String code;
+    private String concession;
+    @Column(nullable = false) private String center;
+    @Column(nullable = false) private String train;
+    @Column(nullable = false, name = &quot;line_name&quot;) private String line;
+    @Column(nullable = false) private int sectionLengthCm;
+    @Column(nullable = false) private long timestamp;
+    @Column(nullable = false) private String operatorName;
+    @Column(nullable = false) private int manualCount;
+<span class="fc" id="L20">    @Column(columnDefinition = &quot;TEXT&quot;) private String markerCoordinatesJson = &quot;[]&quot;;</span>
+    @Column(columnDefinition = &quot;TEXT&quot;) private String observations;
+    private String photoPath;
+<span class="fc" id="L23">    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 25)</span>
+    private SampleStatus reviewStatus = SampleStatus.PENDIENTE_REVISION;
+    @Column(length = 500) private String supervisorComment;
+    private String supervisorName;
+    @Column(nullable = false) private long updatedAt;
+
+    @PrePersist @PreUpdate
+<span class="fc" id="L30">    void touch() { updatedAt = System.currentTimeMillis(); }</span>
+
+<span class="nc" id="L32">    public Long getId() { return id; }</span>
+<span class="fc" id="L33">    public String getCode() { return code; }</span>
+<span class="fc" id="L34">    public void setCode(String v) { code = v; }</span>
+<span class="fc" id="L35">    public String getConcession() { return concession; }</span>
+<span class="fc" id="L36">    public void setConcession(String v) { concession = v; }</span>
+<span class="fc" id="L37">    public String getCenter() { return center; }</span>
+<span class="fc" id="L38">    public void setCenter(String v) { center = v; }</span>
+<span class="fc" id="L39">    public String getTrain() { return train; }</span>
+<span class="fc" id="L40">    public void setTrain(String v) { train = v; }</span>
+<span class="fc" id="L41">    public String getLine() { return line; }</span>
+<span class="fc" id="L42">    public void setLine(String v) { line = v; }</span>
+<span class="fc" id="L43">    public int getSectionLengthCm() { return sectionLengthCm; }</span>
+<span class="fc" id="L44">    public void setSectionLengthCm(int v) { sectionLengthCm = v; }</span>
+<span class="fc" id="L45">    public long getTimestamp() { return timestamp; }</span>
+<span class="fc" id="L46">    public void setTimestamp(long v) { timestamp = v; }</span>
+<span class="fc" id="L47">    public String getOperatorName() { return operatorName; }</span>
+<span class="fc" id="L48">    public void setOperatorName(String v) { operatorName = v; }</span>
+<span class="fc" id="L49">    public int getManualCount() { return manualCount; }</span>
+<span class="fc" id="L50">    public void setManualCount(int v) { manualCount = v; }</span>
+<span class="fc" id="L51">    public String getMarkerCoordinatesJson() { return markerCoordinatesJson; }</span>
+<span class="fc" id="L52">    public void setMarkerCoordinatesJson(String v) { markerCoordinatesJson = v; }</span>
+<span class="fc" id="L53">    public String getObservations() { return observations; }</span>
+<span class="fc" id="L54">    public void setObservations(String v) { observations = v; }</span>
+<span class="fc" id="L55">    public String getPhotoPath() { return photoPath; }</span>
+<span class="fc" id="L56">    public void setPhotoPath(String v) { photoPath = v; }</span>
+<span class="fc" id="L57">    public SampleStatus getReviewStatus() { return reviewStatus; }</span>
+<span class="fc" id="L58">    public void setReviewStatus(SampleStatus v) { reviewStatus = v; }</span>
+<span class="fc" id="L59">    public String getSupervisorComment() { return supervisorComment; }</span>
+<span class="fc" id="L60">    public void setSupervisorComment(String v) { supervisorComment = v; }</span>
+<span class="fc" id="L61">    public String getSupervisorName() { return supervisorName; }</span>
+<span class="fc" id="L62">    public void setSupervisorName(String v) { supervisorName = v; }</span>
+<span class="fc" id="L63">    public long getUpdatedAt() { return updatedAt; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

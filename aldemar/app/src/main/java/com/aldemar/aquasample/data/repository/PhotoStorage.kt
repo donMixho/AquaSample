@@ -15,9 +15,18 @@ class PhotoStorage(context: Context) {
     private val directory get() = File(app.filesDir, "images").apply {
         check(exists() || mkdirs()) { "No se pudo crear la carpeta de fotografías." }
     }
-    suspend fun prepareCamera(): String = withContext(Dispatchers.IO) {
-        FileProvider.getUriForFile(app, authority,
-            File.createTempFile("capture_", ".jpg", directory)).toString()
+    /** Destino de una captura de CameraX: el archivo donde se escribe y su URI (FileProvider) para Coil. */
+    class CaptureTarget(val file: File, val uri: String)
+
+    /**
+     * Crea (vacío) el archivo de la foto dentro de filesDir/images, con el código único de la muestra
+     * en el nombre. Una nueva toma de la misma muestra genera otro archivo; el anterior se descarta.
+     */
+    suspend fun prepareCapture(sampleCode: String): CaptureTarget = withContext(Dispatchers.IO) {
+        val safeCode = sampleCode.replace(Regex("[^A-Za-z0-9_-]"), "_").take(64).ifBlank { "muestra" }
+        val file = File(directory, "${safeCode}_${System.currentTimeMillis()}.jpg")
+        check(file.exists() || file.createNewFile()) { "No se pudo crear el archivo de la fotografía." }
+        CaptureTarget(file, FileProvider.getUriForFile(app, authority, file).toString())
     }
     suspend fun verify(uri: String) = withContext(Dispatchers.IO) {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }

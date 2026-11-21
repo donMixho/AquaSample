@@ -26,7 +26,7 @@ class FormFlowTest {
         compose.onNodeWithText("Línea PRUEBA").assertExists()
         compose.onNodeWithText("Siguiente: Evidencia Fotográfica ➔").performScrollTo().performClick()
         val app = compose.activity.application as AquaSampleApp
-        val source=runBlocking { app.photoStorage.prepareCamera() }
+        val source=runBlocking { app.photoStorage.prepareCapture("MUE-FORM-TEST").uri }
         compose.activity.contentResolver.openOutputStream(Uri.parse(source))!!.use {
             val bitmap=Bitmap.createBitmap(32,32,Bitmap.Config.ARGB_8888)
             bitmap.compress(Bitmap.CompressFormat.JPEG,90,it); bitmap.recycle()
@@ -51,7 +51,7 @@ class FormFlowTest {
             val id=app.demoDatabase.sampleDao().findIdByCode(code)!!
             app.demoDatabase.sampleDao().getSampleByIdOnce(id)!!
         }
-        assertEquals(23,saved.musselCount)
+        assertEquals(23,saved.manualCount)
         assertNotNull(saved.photoPath)
         // Opens the detail as operator: review actions must be absent.
         compose.onNode(hasText(code) and hasSetTextAction().not()).performClick()

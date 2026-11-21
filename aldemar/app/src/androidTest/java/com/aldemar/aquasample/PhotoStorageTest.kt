@@ -16,7 +16,8 @@ class PhotoStorageTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     @Test fun validCaptureCanBeImportedAndRemainsReadable() = runBlocking {
         val storage = PhotoStorage(context)
-        val source = storage.prepareCamera()
+        val target = storage.prepareCapture("MUE-TEST-1")
+        val source = target.uri
         var imported: String? = null
         try {
             context.contentResolver.openOutputStream(Uri.parse(source))!!.use {
@@ -31,9 +32,22 @@ class PhotoStorageTest {
             PhotoStorage(context).verify(imported!!)
         } finally { storage.discard(source); storage.discard(imported) }
     }
+    @Test fun captureFileLivesInPrivateImagesFolderAndNameCarriesSampleCode() = runBlocking {
+        val storage = PhotoStorage(context)
+        val target = storage.prepareCapture("MUE-2026/ab c")
+        try {
+            assertTrue(target.file.exists())
+            assertEquals(java.io.File(context.filesDir, "images").canonicalPath, target.file.parentFile!!.canonicalPath)
+            assertTrue(target.file.name.startsWith("MUE-2026_ab_c_"))
+            assertTrue(target.file.name.endsWith(".jpg"))
+            storage.discard(target.uri)
+            assertFalse(target.file.exists())
+        } finally { storage.discard(target.uri) }
+    }
     @Test fun emptyOrInvalidCaptureIsRejected() = runBlocking {
         val storage = PhotoStorage(context)
-        val source = storage.prepareCamera()
+        val target = storage.prepareCapture("MUE-TEST-1")
+        val source = target.uri
         try {
             var rejected=false
             try { storage.verify(source) } catch (_: IllegalStateException) { rejected=true }

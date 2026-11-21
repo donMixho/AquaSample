@@ -24,6 +24,9 @@ import com.aldemar.aquasample.ui.screens.sample.NewSampleScreen
 import com.aldemar.aquasample.ui.screens.sample.PhotoCaptureScreen
 import com.aldemar.aquasample.ui.screens.sample.SampleSummaryScreen
 import com.aldemar.aquasample.ui.viewmodel.AuthViewModel
+import com.aldemar.aquasample.ui.viewmodel.AnalyticsViewModel
+import com.aldemar.aquasample.ui.screens.dashboard.DashboardScreen
+import com.aldemar.aquasample.ui.screens.history.ComparePeriodsScreen
 import com.aldemar.aquasample.ui.viewmodel.SampleCreateViewModel
 import com.aldemar.aquasample.ui.viewmodel.SampleListViewModel
 import com.aldemar.aquasample.ui.viewmodel.SupervisorReviewViewModel
@@ -53,6 +56,7 @@ fun AquaNavigation(
             initializer { SampleListViewModel(repository, createSavedStateHandle()) }
             initializer { SampleCreateViewModel(repository, app.photoStorage, createSavedStateHandle()) }
             initializer { SupervisorReviewViewModel(repository) }
+            initializer { AnalyticsViewModel(repository) }
         }
     }
     // Activity-owned instances survive rotation and are cleared with their owner.
@@ -99,6 +103,8 @@ fun AquaNavigation(
                     sampleCreateViewModel.setOperator(authUiState.currentUserName)
                     navController.navigate(Screen.NewSample.route)
                 },
+                onNavigateToDashboard = { navController.navigate(Screen.Dashboard.route) },
+                onNavigateToCompare = { navController.navigate(Screen.Compare.route) },
                 onNavigateToReview = { sampleId ->
                     navController.navigate(Screen.SupervisorReview.createRoute(sampleId))
                 },
@@ -113,11 +119,29 @@ fun AquaNavigation(
             )
         }
 
+        // Dashboard y comparación de períodos: disponibles para todos los roles
+        composable(Screen.Dashboard.route) {
+            if (!authUiState.isLoggedIn) return@composable
+            DashboardScreen(
+                role = authUiState.currentRole,
+                viewModel = viewModel<AnalyticsViewModel>(key = "$mode-analytics", factory = factory),
+                onNavigateBack = { navController.popBackStack() },
+                onCompare = { navController.navigate(Screen.Compare.route) }
+            )
+        }
+        composable(Screen.Compare.route) {
+            if (!authUiState.isLoggedIn) return@composable
+            ComparePeriodsScreen(
+                viewModel = viewModel<AnalyticsViewModel>(key = "$mode-analytics", factory = factory),
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
         // ==========================================
         // 3. Wizard Paso 1: Ubicación y Datos Base
         // ==========================================
         composable(Screen.NewSample.route) {
-            if (!authUiState.isLoggedIn) return@composable
+            if (!authUiState.isLoggedIn || !authUiState.currentRole.canCreateSamples) return@composable
             NewSampleScreen(
                 viewModel = sampleCreateViewModel,
                 onNavigateBack = { navController.popBackStack() },
@@ -129,7 +153,7 @@ fun AquaNavigation(
         // 4. Wizard Paso 2: Evidencia Fotográfica
         // ==========================================
         composable(Screen.PhotoCapture.route) {
-            if (!authUiState.isLoggedIn) return@composable
+            if (!authUiState.isLoggedIn || !authUiState.currentRole.canCreateSamples) return@composable
             PhotoCaptureScreen(
                 viewModel = sampleCreateViewModel,
                 onNavigateBack = { navController.popBackStack() },
@@ -141,7 +165,7 @@ fun AquaNavigation(
         // 5. Wizard Paso 3: Conteo Numérico y Observaciones
         // ==========================================
         composable(Screen.CountObservations.route) {
-            if (!authUiState.isLoggedIn) return@composable
+            if (!authUiState.isLoggedIn || !authUiState.currentRole.canCreateSamples) return@composable
             CountObservationsScreen(
                 viewModel = sampleCreateViewModel,
                 onNavigateBack = { navController.popBackStack() },
@@ -153,7 +177,7 @@ fun AquaNavigation(
         // 6. Wizard Paso 4: Resumen y Persistencia Local
         // ==========================================
         composable(Screen.SampleSummary.route) {
-            if (!authUiState.isLoggedIn) return@composable
+            if (!authUiState.isLoggedIn || !authUiState.currentRole.canCreateSamples) return@composable
             SampleSummaryScreen(
                 viewModel = sampleCreateViewModel,
                 onNavigateBack = { navController.popBackStack() },

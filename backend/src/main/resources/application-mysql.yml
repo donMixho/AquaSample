@@ -1,0 +1,12 @@
+# Perfil mysql: --spring.profiles.active=mysql (base aquasample de AquaSample_DB/00_crear_base_de_datos.sql)
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/aquasample?useSSL=false&serverTimezone=UTC}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+  h2:
+    console:
+      enabled: false

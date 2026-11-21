@@ -5,13 +5,15 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- TakePicture delegates to the installed camera; no direct camera permission. -->
+    <!-- CameraX captura dentro de la app; el permiso CAMERA se solicita en tiempo de ejecución. -->
 
     <application
         android:name=".AquaSampleApp"
+        android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"

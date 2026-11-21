@@ -20,9 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Engineering
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
@@ -90,7 +88,7 @@ fun LoginScreen(
     authUiState: AuthUiState,
     authViewModel: AuthViewModel
 ) {
-    var selectedRole by rememberSaveable { mutableStateOf(UserRole.OPERADOR) }
+    var selectedRole by rememberSaveable { mutableStateOf(UserRole.OPERATOR) }
     var userName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -360,53 +358,23 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FilterChip(
-                        selected = selectedRole == UserRole.OPERADOR,
-                        onClick = {
-                            selectedRole = UserRole.OPERADOR
-                            if (userName.isBlank() || userName == UserRole.SUPERVISOR.defaultUser) {
-                                userName = UserRole.OPERADOR.defaultUser
-                            }
-                        },
-                        label = { Text("Operador") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Engineering,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = AquaPrimary,
-                            selectedLabelColor = AquaSurface,
-                            selectedLeadingIconColor = AquaSurface
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    FilterChip(
-                        selected = selectedRole == UserRole.SUPERVISOR,
-                        onClick = {
-                            selectedRole = UserRole.SUPERVISOR
-                            if (userName.isBlank() || userName == UserRole.OPERADOR.defaultUser) {
-                                userName = UserRole.SUPERVISOR.defaultUser
-                            }
-                        },
-                        label = { Text("Supervisor") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.SupervisorAccount,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = AquaPrimary,
-                            selectedLabelColor = AquaSurface,
-                            selectedLeadingIconColor = AquaSurface
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
+                    UserRole.entries.forEach { role ->
+                        FilterChip(
+                            selected = selectedRole == role,
+                            onClick = {
+                                selectedRole = role
+                                if (userName.isBlank() || UserRole.entries.any { it.defaultUser == userName }) {
+                                    userName = role.defaultUser
+                                }
+                            },
+                            label = { Text(role.shortLabel, maxLines = 1, fontSize = 13.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AquaPrimary,
+                                selectedLabelColor = AquaSurface
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

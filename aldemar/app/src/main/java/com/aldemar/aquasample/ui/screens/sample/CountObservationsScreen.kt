@@ -17,7 +17,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.size
+import com.aldemar.aquasample.ui.components.MarkedPhotoViewer
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -73,6 +83,22 @@ fun CountObservationsScreen(
     onNavigateToSummary: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var confirmClear by rememberSaveable { mutableStateOf(false) }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("Limpiar marcas", fontWeight = FontWeight.Bold, color = AquaPrimary) },
+            text = { Text("Se quitarán las ${uiState.markers.size} marcas de la fotografía. El ajuste manual se conserva.", color = AquaTextPrimary) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearMarkers(); confirmClear = false }) { Text("Limpiar", color = AquaPrimary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClear = false }) { Text("Cancelar", color = AquaPrimary) }
+            },
+            containerColor = AquaSurface
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -108,6 +134,78 @@ fun CountObservationsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Conteo asistido: marcas sobre la fotografía ampliable
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = AquaSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        text = "Conteo asistido sobre la fotografía",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AquaPrimary
+                    )
+                    Text(
+                        text = "Toque cada individuo para marcarlo. Pellizque para ampliar y arrastre para moverse.",
+                        fontSize = 12.sp,
+                        color = AquaTextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val photo = uiState.photoPath
+                    if (photo != null) {
+                        MarkedPhotoViewer(
+                            photo = photo,
+                            markers = uiState.markers,
+                            onAddMarker = viewModel::addMarker,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(340.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                    } else {
+                        Text("Falta la fotografía: vuelva al paso anterior.", color = AquaTextSecondary, fontSize = 13.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Marcas: ${uiState.markers.size}  ·  Ajuste manual: ${if (uiState.manualAdjustment > 0) "+" else ""}${uiState.manualAdjustment}  ·  Total: ${uiState.musselCount}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = AquaTextPrimary
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = viewModel::undoLastMarker,
+                            enabled = uiState.markers.isNotEmpty(),
+                            modifier = Modifier.weight(1f).height(44.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Deshacer", fontSize = 13.sp)
+                        }
+                        OutlinedButton(
+                            onClick = { confirmClear = true },
+                            enabled = uiState.markers.isNotEmpty(),
+                            modifier = Modifier.weight(1f).height(44.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Limpiar marcas", fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Tarjeta de Conteo de Individuos
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -127,7 +225,7 @@ fun CountObservationsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        text = "Individuos contabilizados en la sección de ${uiState.sectionLengthMeters} metro(s).",
+                        text = "Total del tramo de ${uiState.sectionLengthCm.trim()} cm = marcas + ajuste manual. Corrija aquí las diferencias sin perder las marcas.",
                         fontSize = 12.sp,
                         color = AquaTextSecondary,
                         modifier = Modifier.fillMaxWidth()
@@ -151,7 +249,7 @@ fun CountObservationsScreen(
                                 color = AquaPrimary
                             )
                             Text(
-                                text = "individuos",
+                                text = "individuos (${uiState.markers.size} marcas ${if (uiState.manualAdjustment >= 0) "+" else "−"} ${kotlin.math.abs(uiState.manualAdjustment)})",
                                 fontSize = 13.sp,
                                 color = AquaTextSecondary,
                                 fontWeight = FontWeight.Medium

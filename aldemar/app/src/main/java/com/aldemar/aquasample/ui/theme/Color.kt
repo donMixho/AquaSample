@@ -40,5 +40,8 @@ val AquaTonalContainer = Color(0xFFD9EAFB)
 // Botones deshabilitados: gris medio con texto gris oscuro (legible, no gris sobre gris).
 val AquaDisabledContainer = Color(0xFFCFD4DA)
 val AquaDisabledContent = Color(0xFF4B5563)
+
+// Contenedores claros (azul muy suave) con texto oscuro #212121.
+val AquaSoftContainer = Color(0xFFE3F2FD)
 val StatusPending = Color(0xFF00509E)
 val StatusPendingBg = Color(0xFFEBF5FF)

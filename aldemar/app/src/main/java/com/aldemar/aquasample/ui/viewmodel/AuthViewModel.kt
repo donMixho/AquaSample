@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 
 data class AuthUiState(
     val isLoggedIn: Boolean = false,
-    val currentRole: UserRole = UserRole.OPERADOR,
+    val currentRole: UserRole = UserRole.OPERATOR,
     val currentUserName: String = "",
     val userEmail: String? = null,
     val userId: String? = null,
@@ -40,7 +40,7 @@ class AuthViewModel(
         if (demoEnabled && savedState.get<Boolean>("demo") == true) {
             _uiState.value = AuthUiState(isLoggedIn = true, isDemo = true,
                 currentUserName = savedState["demoName"] ?: "Demostración",
-                currentRole = if (savedState.get<String>("demoRole") == "SUPERVISOR") UserRole.SUPERVISOR else UserRole.OPERADOR)
+                currentRole = UserRole.fromName(savedState.get<String>("demoRole")))
         } else viewModelScope.launch {
             try {
                 _uiState.value = repository.restore()?.toState() ?: AuthUiState()

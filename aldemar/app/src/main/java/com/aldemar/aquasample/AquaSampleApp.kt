@@ -3,6 +3,7 @@ package com.aldemar.aquasample
 import android.app.Application
 import com.aldemar.aquasample.data.local.AquaSampleDatabase
 import com.aldemar.aquasample.data.repository.SampleRepository
+import com.aldemar.aquasample.worker.SyncScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,16 +28,17 @@ class AquaSampleApp : Application() {
     val database by lazy { AquaSampleDatabase.getDatabase(this) }
 
     // Repositorio central que conecta los DAOs con la lógica de negocio y los ViewModels
-    val repository by lazy { SampleRepository(database.sampleDao()) }
-    val demoDatabase by lazy {
-        androidx.room.Room.databaseBuilder(this, AquaSampleDatabase::class.java, "aquasample_demo.db").build()
-    }
+    val repository by lazy { SampleRepository(database.sampleDao()) { SyncScheduler.syncNow(this) } }
+    val settings by lazy { com.aldemar.aquasample.data.remote.AppSettings(this) }
+    val marineRepository by lazy { com.aldemar.aquasample.data.remote.marine.MarineRepository.create(settings) }
+    val demoDatabase by lazy { AquaSampleDatabase.build(this, "aquasample_demo.db") }
     val demoRepository by lazy { SampleRepository(demoDatabase.sampleDao()) }
 
     val photoStorage by lazy { com.aldemar.aquasample.data.repository.PhotoStorage(this) }
 
     override fun onCreate() {
         super.onCreate()
+        SyncScheduler.schedulePeriodic(this)
         // Asegura que existan centros de cultivo y muestras demo en la BD local
         applicationScope.launch {
             repository.ensureInitialData(includeDemoSamples = false)

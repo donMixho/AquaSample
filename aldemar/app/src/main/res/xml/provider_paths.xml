@@ -3,4 +3,7 @@
     <files-path
         name="sample_photos"
         path="images/" />
+    <cache-path
+        name="reports"
+        path="reports/" />
 </paths>

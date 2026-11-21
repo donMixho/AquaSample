@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.aldemar.aquasample.data.model.UserRole
 import com.aldemar.aquasample.data.model.SampleStatus
+import com.aldemar.aquasample.ui.viewmodel.SampleFormat
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.imePadding
 import com.aldemar.aquasample.ui.components.AquaButtonColors
@@ -144,18 +145,20 @@ fun SupervisorReviewScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = AquaPrimary
                             )
-                            StatusBadge(status = SampleStatus.fromString(sample.status))
+                            StatusBadge(status = sample.reviewStatus)
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        SummaryRow(label = "Centro de Cultivo", value = sample.centerName)
-                        SummaryRow(label = "Tren / Módulo", value = sample.trainNumber)
-                        SummaryRow(label = "Línea / Cuerda", value = sample.lineNumber)
-                        SummaryRow(label = "Tramo Medido", value = "${sample.sectionLengthMeters} metro(s)")
-                        SummaryRow(label = "Conteo Realizado", value = "${sample.musselCount} choritos")
+                        sample.concession?.let { SummaryRow(label = "Concesión", value = it) }
+                        SummaryRow(label = "Centro de Cultivo", value = sample.center)
+                        SummaryRow(label = "Tren / Módulo", value = sample.train)
+                        SummaryRow(label = "Línea / Cuerda", value = sample.line)
+                        SummaryRow(label = "Tramo Medido", value = SampleFormat.lengthLabel(sample.sectionLengthCm))
+                        SummaryRow(label = "Conteo Realizado", value = "${sample.manualCount} choritos")
                         SummaryRow(label = "Operador de Terreno", value = sample.operatorName)
-                        SummaryRow(label = "Fecha de Registro", value = sample.sampleDate)
+                        SummaryRow(label = "Fecha de Registro", value = SampleFormat.dateTime(sample.timestamp))
+                        SummaryRow(label = "Sincronización", value = sample.syncStatus.label)
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = AquaOutline)
 
@@ -209,10 +212,10 @@ fun SupervisorReviewScreen(
                 uiState.errorMessage?.let {
                     Text(it, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
                 }
-                if (authUiState.currentRole != UserRole.SUPERVISOR) {
+                if (!authUiState.currentRole.canReview) {
                     Text("Consulta de la muestra. El dictamen corresponde al supervisor.", color = AquaTextSecondary)
                 }
-                if (authUiState.currentRole == UserRole.SUPERVISOR) {
+                if (authUiState.currentRole.canReview) {
                 // Panel de Decisión y Dictamen del Supervisor
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -264,7 +267,7 @@ fun SupervisorReviewScreen(
                             Button(
                                 onClick = {
                                     viewModel.applyReview(
-                                        newStatus = SampleStatus.OBSERVADO,
+                                        newStatus = SampleStatus.OBSERVADA,
                                         supervisorName = authUiState.currentUserName,
                                         role = authUiState.currentRole,
                                         onSuccess = onNavigateBack
@@ -295,7 +298,7 @@ fun SupervisorReviewScreen(
                             Button(
                                 onClick = {
                                     viewModel.applyReview(
-                                        newStatus = SampleStatus.VALIDADO,
+                                        newStatus = SampleStatus.VALIDADA,
                                         supervisorName = authUiState.currentUserName,
                                         role = authUiState.currentRole,
                                         onSuccess = onNavigateBack

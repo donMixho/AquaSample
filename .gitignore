@@ -8,3 +8,5 @@
 *.jks
 *.keystore
 *.hprof
+keystore.properties
+**/keystore.properties

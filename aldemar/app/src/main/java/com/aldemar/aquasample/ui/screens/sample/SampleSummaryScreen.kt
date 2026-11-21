@@ -126,16 +126,21 @@ fun SampleSummaryScreen(
                             fontWeight = FontWeight.Bold,
                             color = AquaPrimary
                         )
-                        StatusBadge(status = SampleStatus.PENDIENTE)
+                        StatusBadge(status = SampleStatus.PENDIENTE_REVISION)
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    if (uiState.concession.isNotBlank()) SummaryRow(label = "Concesión", value = uiState.concession.trim())
                     SummaryRow(label = "Centro de Cultivo", value = uiState.centerName)
                     SummaryRow(label = "Tren / Módulo", value = uiState.trainNumber)
                     SummaryRow(label = "Línea / Cuerda", value = uiState.lineNumber)
-                    SummaryRow(label = "Tramo Muestreado", value = "${uiState.sectionLengthMeters} metro(s)")
+                    SummaryRow(label = "Tramo Muestreado", value = "${uiState.sectionLengthCm.trim()} cm")
                     SummaryRow(label = "Conteo Total", value = "${uiState.musselCount} choritos")
+                    if (uiState.markers.isNotEmpty() || uiState.manualAdjustment != 0) {
+                        SummaryRow(label = "Detalle del conteo",
+                            value = "${uiState.markers.size} marcas ${if (uiState.manualAdjustment >= 0) "+" else "−"} ${kotlin.math.abs(uiState.manualAdjustment)} ajuste")
+                    }
                     SummaryRow(label = "Operador", value = uiState.operatorName)
                     SummaryRow(label = "Fecha y Hora", value = uiState.sampleDate)
 

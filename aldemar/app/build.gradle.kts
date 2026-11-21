@@ -1,10 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
+    jacoco
 }
+
+// Firma de release: lee keystore.properties (ignorado por git). Sin el archivo, el repo compila igual.
+val keystoreProps = Properties()
+val keystoreFile = rootProject.file("keystore.properties")
+if (keystoreFile.exists()) keystoreFile.inputStream().use { stream -> keystoreProps.load(stream) }
+val storePath: String? = keystoreProps.getProperty("storeFile")
+val hasKeystore = storePath != null && rootProject.file(storePath).exists()
 
 android {
     namespace = "com.aldemar.aquasample"
@@ -20,8 +30,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            if (hasKeystore) {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            enableUnitTestCoverage = true
+        }
         release {
+            if (hasKeystore) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -35,6 +60,13 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+    }
+    sourceSets {
+        // Esquemas exportados de Room: los usa MigrationTestHelper en las pruebas instrumentadas.
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
     buildFeatures {
         compose = true
@@ -63,11 +95,28 @@ dependencies {
 
     // Coil (Image loading)
     implementation(libs.coil.compose)
+    implementation(libs.telephoto.zoomable.image.coil)
+
+    // CameraX
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+
+    // Retrofit + OkHttp, WorkManager, DataStore
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp.logging)
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.datastore.preferences)
 
     // Testing
+    testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -81,3 +130,22 @@ dependencies {
 }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
+jacoco { toolVersion = "0.8.12" }
+
+// ./gradlew testDebugUnitTest jacocoTestReport  -> app/build/reports/jacoco/jacocoTestReport/html/index.html
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+    reports { xml.required.set(true); html.required.set(true) }
+    val excludes = listOf(
+        "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*",
+        "**/*ScreenKt*", "**/*_Impl*", "**/theme/**", "**/*ComposableSingletons*",
+        "**/*\$\$inlined*", "**/*\$WhenMappings*"
+    )
+    val includes = listOf("viewmodel", "repository", "model", "remote", "worker").map { "**/$it/**" }
+    classDirectories.setFrom(fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+        include(includes); exclude(excludes)
+    })
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(fileTree(layout.buildDirectory) { include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec") })
+}

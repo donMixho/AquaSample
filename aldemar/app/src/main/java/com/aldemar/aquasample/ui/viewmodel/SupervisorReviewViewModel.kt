@@ -50,16 +50,16 @@ class SupervisorReviewViewModel(private val repository: SampleRepository) : View
         val sample = _uiState.value.sample ?: return
         val comment = _uiState.value.supervisorComment.trim()
         val error = when {
-            role != UserRole.SUPERVISOR -> "Solo el perfil supervisor puede emitir un dictamen."
+            !role.canReview -> "Solo el perfil supervisor puede emitir un dictamen."
             supervisorName.isBlank() -> "Falta el nombre del supervisor."
-            newStatus == SampleStatus.PENDIENTE -> "Selecciona Validar u Observar."
-            else -> SampleValidation.validateReview(newStatus == SampleStatus.OBSERVADO, comment)
+            newStatus != SampleStatus.VALIDADA && newStatus != SampleStatus.OBSERVADA -> "Selecciona Validar u Observar."
+            else -> SampleValidation.validateReview(newStatus == SampleStatus.OBSERVADA, comment)
         }
         if (error != null) { _uiState.value = _uiState.value.copy(errorMessage = error); return }
         _uiState.value = _uiState.value.copy(isSaving = true, errorMessage = null)
         viewModelScope.launch {
             try {
-                repository.updateStatus(sample.id, newStatus.name,
+                repository.updateStatus(sample.id, newStatus,
                     comment.ifBlank { "Muestra revisada y validada." }, supervisorName.trim())
                 _uiState.value = _uiState.value.copy(isSaving = false, isUpdated = true)
                 onSuccess()

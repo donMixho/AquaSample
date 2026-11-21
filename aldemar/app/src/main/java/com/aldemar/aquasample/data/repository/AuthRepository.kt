@@ -10,10 +10,13 @@ import kotlin.coroutines.resumeWithException
 
 data class AuthAccount(val uid: String, val name: String, val email: String?, val role: UserRole)
 
-/** Only a trusted Firebase token can grant the supervisor role. */
+/** Only a trusted Firebase token can grant an elevated role; anything else is OPERATOR. */
 object RolePolicy {
-    fun fromClaims(claims: Map<String, Any>): UserRole =
-        if (claims["role"] == "SUPERVISOR") UserRole.SUPERVISOR else UserRole.OPERADOR
+    fun fromClaims(claims: Map<String, Any>): UserRole = when (claims["role"]) {
+        "SUPERVISOR" -> UserRole.SUPERVISOR
+        "ANALYST" -> UserRole.ANALYST
+        else -> UserRole.OPERATOR
+    }
 }
 
 interface AuthRepository {

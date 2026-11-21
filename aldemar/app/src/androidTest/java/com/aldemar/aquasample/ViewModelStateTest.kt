@@ -57,14 +57,42 @@ class ViewModelStateTest {
         } finally { main { store.clear() }; db.close() }
     }
 
+    @Test fun markersAndManualAdjustmentAlwaysAddUpToTheSavedCount() = runBlocking {
+        val db = Room.inMemoryDatabaseBuilder(context, AquaSampleDatabase::class.java).build()
+        val store = ViewModelStore()
+        try {
+            lateinit var vm: SampleCreateViewModel
+            main {
+                vm = SampleCreateViewModel(SampleRepository(db.sampleDao()), PhotoStorage(context), SavedStateHandle())
+                store.put("create", vm)
+                vm.addMarker(0.1f, 0.2f); vm.addMarker(0.9f, 0.8f); vm.addMarker(0.5f, 0.5f)
+                vm.addMarker(1.5f, 0.5f) // fuera de la imagen: se ignora
+                assertEquals(3, vm.uiState.value.musselCount)
+                vm.incrementCount(2)
+                assertEquals(5, vm.uiState.value.musselCount)
+                assertEquals(2, vm.uiState.value.manualAdjustment)
+                assertEquals(3, vm.uiState.value.markers.size)
+                vm.undoLastMarker()
+                assertEquals(4, vm.uiState.value.musselCount) // 2 marcas + 2 de ajuste
+                vm.updateCount("1") // edición directa: las marcas se conservan
+                assertEquals(1, vm.uiState.value.musselCount)
+                assertEquals(2, vm.uiState.value.markers.size)
+                assertEquals("1", vm.uiState.value.countText)
+                vm.clearMarkers()
+                assertEquals(0, vm.uiState.value.markers.size)
+                assertEquals(vm.uiState.value.musselCount.toString(), vm.uiState.value.countText)
+            }
+        } finally { main { store.clear() }; db.close() }
+    }
+
     @Test fun operatorCannotApplyReviewAndSupervisorNeedsObservationReason() = runBlocking {
         val db = Room.inMemoryDatabaseBuilder(context, AquaSampleDatabase::class.java).build()
         val store = ViewModelStore()
         try {
             val repository = SampleRepository(db.sampleDao())
-            val id = repository.insertSample(SampleEntity(code="ROLE-TEST", centerName="Huar", trainNumber="1",
-                lineNumber="1", sampleDate="22-10-2026", sectionLengthMeters=1.0,
-                operatorName="Operador", musselCount=0, observations=""))
+            val id = repository.insertSample(SampleEntity(code="ROLE-TEST", center="Huar", train="1",
+                line="1", timestamp=System.currentTimeMillis(), sectionLengthCm=100,
+                operatorName="Operador", manualCount=0, observations=""))
             lateinit var vm: SupervisorReviewViewModel
             main {
                 vm = SupervisorReviewViewModel(repository)
@@ -73,19 +101,19 @@ class ViewModelStateTest {
             }
             withTimeout(10000) { vm.uiState.first { it.sample != null } }
             main {
-                vm.applyReview(SampleStatus.VALIDADO, "Operador", UserRole.OPERADOR) { fail("Unauthorized success") }
+                vm.applyReview(SampleStatus.VALIDADA, "Operador", UserRole.OPERATOR) { fail("Unauthorized success") }
                 assertNotNull(vm.uiState.value.errorMessage)
             }
-            assertEquals("PENDIENTE", db.sampleDao().getSampleByIdOnce(id)!!.status)
+            assertEquals(SampleStatus.PENDIENTE_REVISION, db.sampleDao().getSampleByIdOnce(id)!!.reviewStatus)
             main {
-                vm.applyReview(SampleStatus.OBSERVADO, "Supervisora", UserRole.SUPERVISOR) { fail("Empty reason accepted") }
+                vm.applyReview(SampleStatus.OBSERVADA, "Supervisora", UserRole.SUPERVISOR) { fail("Empty reason accepted") }
                 assertEquals("Explica el motivo de la observación.", vm.uiState.value.errorMessage)
                 vm.updateComment("Repetir conteo")
-                vm.applyReview(SampleStatus.OBSERVADO, "Supervisora", UserRole.SUPERVISOR) { }
+                vm.applyReview(SampleStatus.OBSERVADA, "Supervisora", UserRole.SUPERVISOR) { }
             }
             withTimeout(10000) { vm.uiState.first { it.isUpdated } }
             val stored = db.sampleDao().getSampleByIdOnce(id)!!
-            assertEquals("OBSERVADO", stored.status)
+            assertEquals(SampleStatus.OBSERVADA, stored.reviewStatus)
             assertEquals("Repetir conteo", stored.supervisorComment)
         } finally { main { store.clear() }; db.close() }
     }

@@ -1,0 +1,20 @@
+# Perfil por defecto: H2 en memoria (arranca sin configuración externa).
+server:
+  port: 8080
+spring:
+  application:
+    name: aquasample-backend
+  datasource:
+    url: jdbc:h2:mem:aquasample;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  h2:
+    console:
+      enabled: true
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

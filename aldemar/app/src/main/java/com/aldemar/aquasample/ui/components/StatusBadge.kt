@@ -12,6 +12,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldemar.aquasample.data.model.SampleStatus
+import com.aldemar.aquasample.ui.theme.AquaBackground
+import com.aldemar.aquasample.ui.theme.AquaOutline
+import com.aldemar.aquasample.ui.theme.AquaTextSecondary
 import com.aldemar.aquasample.ui.theme.StatusAlertBg
 import com.aldemar.aquasample.ui.theme.StatusAlertDark
 import com.aldemar.aquasample.ui.theme.StatusPending
@@ -33,9 +36,11 @@ fun StatusBadge(
     modifier: Modifier = Modifier
 ) {
     val (bgColor, textColor, borderColor) = when (status) {
-        SampleStatus.VALIDADO -> Triple(StatusValidatedBg, StatusValidated, StatusValidated.copy(alpha = 0.3f))
-        SampleStatus.OBSERVADO -> Triple(StatusAlertBg, StatusAlertDark, StatusAlertDark.copy(alpha = 0.4f))
-        SampleStatus.PENDIENTE -> Triple(StatusPendingBg, StatusPending, StatusPending.copy(alpha = 0.3f))
+        SampleStatus.VALIDADA -> Triple(StatusValidatedBg, StatusValidated, StatusValidated.copy(alpha = 0.3f))
+        SampleStatus.OBSERVADA -> Triple(StatusAlertBg, StatusAlertDark, StatusAlertDark.copy(alpha = 0.4f))
+        SampleStatus.PENDIENTE_REVISION, SampleStatus.CORREGIDA ->
+            Triple(StatusPendingBg, StatusPending, StatusPending.copy(alpha = 0.3f))
+        SampleStatus.BORRADOR -> Triple(AquaBackground, AquaTextSecondary, AquaOutline)
     }
 
     Box(

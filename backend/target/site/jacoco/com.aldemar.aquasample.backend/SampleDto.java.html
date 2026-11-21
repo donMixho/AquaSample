@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SampleDto.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">aquasample-backend</a> &gt; <a href="index.source.html" class="el_package">com.aldemar.aquasample.backend</a> &gt; <span class="el_source">SampleDto.java</span></div><h1>SampleDto.java</h1><pre class="source lang-java linenums">package com.aldemar.aquasample.backend;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+
+/** Contrato idéntico a SampleDto de AquaSampleBackendApi.kt (+ photoPath y updatedAt). */
+<span class="fc" id="L9">public record SampleDto(</span>
+        @NotBlank String code,
+        String concession,
+        @NotBlank String center,
+        @NotBlank String train,
+        @NotBlank String line,
+        @Positive int sectionLengthCm,
+        long timestamp,
+        @NotBlank String operatorName,
+        @PositiveOrZero int manualCount,
+        String markerCoordinatesJson,
+        @NotNull String observations,
+        String photoPath,
+        String reviewStatus,
+        String supervisorComment,
+        String supervisorName,
+        Long updatedAt) {
+
+    static SampleDto from(SampleRecord r) {
+<span class="fc" id="L28">        return new SampleDto(r.getCode(), r.getConcession(), r.getCenter(), r.getTrain(), r.getLine(),</span>
+<span class="fc" id="L29">                r.getSectionLengthCm(), r.getTimestamp(), r.getOperatorName(), r.getManualCount(),</span>
+<span class="fc" id="L30">                r.getMarkerCoordinatesJson(), r.getObservations(), r.getPhotoPath(),</span>
+<span class="fc" id="L31">                r.getReviewStatus().name(), r.getSupervisorComment(), r.getSupervisorName(), r.getUpdatedAt());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

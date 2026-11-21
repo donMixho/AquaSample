@@ -1,6 +1,22 @@
 package com.aldemar.aquasample.ui.screens.sample
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.aldemar.aquasample.ui.components.CameraCaptureView
+import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -68,18 +84,50 @@ fun PhotoCaptureScreen(
     BackHandler(enabled = busy) { }
 
 
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) {
-        viewModel.cameraResult(it)
+    val context = LocalContext.current
+    val hasCamera = remember { context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY) }
+    var hasPermission by remember {
+        mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+    }
+    var permissionDenied by rememberSaveable { mutableStateOf(false) }
+    var cameraOpen by rememberSaveable { mutableStateOf(false) }
+    var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        hasPermission = granted
+        permissionDenied = !granted
+        cameraOpen = granted
     }
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { viewModel.importPhoto(it.toString()) }
     }
-    val launchCamera: () -> Unit = {
-        viewModel.prepareCamera { cameraLauncher.launch(Uri.parse(it)) }
+    val openCamera: () -> Unit = {
+        if (hasPermission) { permissionDenied = false; cameraOpen = true }
+        else permissionLauncher.launch(Manifest.permission.CAMERA)
     }
+    val closeCamera: () -> Unit = { cameraOpen = false; viewModel.discardPendingPhoto() }
+    val shoot: () -> Unit = shoot@{
+        val capture = imageCapture ?: return@shoot
+        viewModel.prepareCapture { file ->
+            capture.takePicture(
+                ImageCapture.OutputFileOptions.Builder(file).build(),
+                ContextCompat.getMainExecutor(context),
+                object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                        cameraOpen = false
+                        viewModel.captureFinished(true)
+                    }
+                    override fun onError(exception: ImageCaptureException) {
+                        viewModel.captureFinished(false, "No se pudo capturar la fotografía. Reintenta o usa la galería.")
+                    }
+                }
+            )
+        }
+    }
+    BackHandler(enabled = cameraOpen && !busy) { closeCamera() }
 
-    val isPreview = uiState.pendingPhotoUri != null
-    val displayedPhoto = uiState.pendingPhotoUri ?: uiState.photoPath
+    val isPreview = uiState.pendingPhotoUri != null && !cameraOpen
+    val displayedPhoto = if (cameraOpen) null else uiState.pendingPhotoUri ?: uiState.photoPath
 
     Scaffold(
         topBar = {
@@ -122,14 +170,20 @@ fun PhotoCaptureScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = if (isPreview) "Vista previa de la fotografía" else "Registro Visual de la Muestra",
+                        text = when {
+                            cameraOpen -> "Cámara"
+                            isPreview -> "Vista previa de la fotografía"
+                            else -> "Registro Visual de la Muestra"
+                        },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = AquaPrimary,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        text = if (isPreview) {
+                        text = if (cameraOpen) {
+                            "Encuadre la cuerda completa y presione el obturador."
+                        } else if (isPreview) {
                             "Confirme la imagen para adjuntarla a esta muestra o vuelva a tomarla."
                         } else {
                             "Tome una fotografía de la cuerda de choritos extendida sobre la mesa de muestreo."
@@ -144,18 +198,28 @@ fun PhotoCaptureScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(240.dp)
+                            .height(if (cameraOpen) 380.dp else 260.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(AquaBackground)
                             .border(1.dp, AquaOutline, RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (displayedPhoto != null) {
+                        if (cameraOpen) {
+                            CameraCaptureView(
+                                onCaptureReady = { imageCapture = it },
+                                onError = { message ->
+                                    cameraOpen = false
+                                    viewModel.setPhotoError(message)
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else if (displayedPhoto != null) {
+                            // Coil carga la foto guardada en el almacenamiento privado (filesDir/images).
                             AsyncImage(
                                 model = displayedPhoto,
                                 contentDescription = "Foto de muestra",
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Fit
                             )
                         } else {
                             Column(
@@ -175,7 +239,7 @@ fun PhotoCaptureScreen(
                                     color = AquaTextSecondary
                                 )
                                 Text(
-                                    text = "Presione el botón para abrir la cámara",
+                                    text = if (hasCamera) "Presione el botón para abrir la cámara" else "Este equipo no tiene cámara: elija una foto de la galería",
                                     fontSize = 11.sp,
                                     color = AquaTextSecondary
                                 )
@@ -194,7 +258,60 @@ fun PhotoCaptureScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (isPreview) {
+                    if (permissionDenied && !cameraOpen) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Sin permiso de cámara no se puede fotografiar dentro de la app. " +
+                                "Puedes concederlo en Ajustes o elegir una foto de la galería.",
+                            color = StatusAlertDark,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                context.startActivity(
+                                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth().height(44.dp)
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.size(6.dp))
+                            Text("Abrir ajustes de la app")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    if (cameraOpen) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = closeCamera,
+                                enabled = !busy,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = AquaPrimary)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.size(6.dp))
+                                Text("Cancelar", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            Button(
+                                onClick = shoot,
+                                enabled = imageCapture != null && !busy,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = AquaButtonColors.filled()
+                            ) {
+                                Icon(Icons.Default.Camera, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.size(6.dp))
+                                Text(if (busy) "Capturando…" else "Capturar", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    } else if (isPreview) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -220,7 +337,8 @@ fun PhotoCaptureScreen(
 
                             OutlinedButton(
                                 onClick = {
-                                    launchCamera()
+                                    viewModel.discardPendingPhoto()
+                                    openCamera()
                                 },
                                 modifier = Modifier
                                     .weight(1f)
@@ -238,8 +356,8 @@ fun PhotoCaptureScreen(
                             }
                         }
                     } else {
-                        Button(
-                            onClick = launchCamera,
+                        if (hasCamera) Button(
+                            onClick = openCamera,
                             enabled = !uiState.isPhotoBusy,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -298,7 +416,7 @@ fun PhotoCaptureScreen(
                 }
             }
 
-            if (!isPreview) {
+            if (!isPreview && !cameraOpen) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
                     onClick = { if (viewModel.validatePhoto()) onNavigateToCount() },

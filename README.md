@@ -1,57 +1,133 @@
-# AquaSample
+# ![Logo AquaSample](docs/diseno/logo.png)
 
-AquaSample es una aplicación Android del proyecto ALDEMAR, desarrollada para la asignatura Desarrollo de Aplicaciones Móviles (DSY1105). Permite registrar muestras de cultivo de choritos, guardar fotografías y consultar el historial de muestreos en el teléfono.
+# AquaSample — Registro y Trazabilidad de Muestras de Choritos (ALDEMAR SpA)
 
-## Integrantes
+## El Problema
 
-- Matías Mena
-- Antoine Rivas
-- Leandro Ruiz
-- Franco Ruz
+Las operaciones de muestreo en cultivos de mitilicultura usan planillas dispersas, fotos en teléfonos y conteos manuales que requieren retraso y coordinación de viajes. **AquaSample** reemplaza eso: una app móvil donde el operador registra fecha, ubicación, foto y conteo asistido sobre la imagen, todo sin internet. El supervisor revisa y valida en la oficina. Los reportes PDF se exportan con trazabilidad completa. El sistema sincroniza cambios cuando hay red y maneja offline como modo nativo.
 
-## Funcionalidades
+## Equipo: Los Royales (N° 4)
 
-- Registro e inicio de sesión con correo y contraseña mediante Firebase.
-- Registro de muestras con centro, tren, línea, longitud, conteo y observaciones.
-- Fotografía con cámara o selección desde la galería.
-- Validaciones con mensajes antes de avanzar y guardar.
-- Historial con búsqueda, filtros y detalle de cada muestra.
-- Revisión de muestras por un supervisor; observar una muestra exige indicar el motivo.
-- Persistencia local con Room y recuperación del formulario ante recreación de la pantalla.
+| Rol | Integrante |
+|---|---|
+| Líder | Franco Ruz |
+| Frontend | Antoine Rivas |
+| Backend | Matías Mena |
+| Tester | Leandro Ruiz |
 
-## Cómo ejecutar
+---
 
-1. Abre la carpeta `aldemar` en Android Studio.
-2. Usa el JDK integrado compatible con Gradle (se comprobó con JDK 21) y el SDK Android 35.
-3. Sincroniza Gradle. La primera sincronización necesita Internet.
-4. Conecta un teléfono con Android 7.0 o superior, activa Depuración USB y acepta la autorización. También puedes usar un emulador ya instalado.
-5. Selecciona el dispositivo y ejecuta el módulo `app` con Run.
+## Historia de Usuario y Flujo
 
-La ruta del SDK se configura localmente en `local.properties` y no se incluye en el repositorio.
+**Como operador de muestreo, quiero registrar una muestra en terreno (centro, tren, línea y tramo) con fotografía y conteo asistido incluso sin conexión a internet, para que al recuperar señal se sincronice automáticamente y el supervisor pueda validarla para su exportación en reportes.**
 
-## Acceso
+### Los 3 Roles
 
-El acceso real usa Firebase y requiere su configuración activa. Las cuentas nuevas ingresan como Operador; el administrador asigna el permiso de Supervisor. Los detalles están en [Acceso Firebase](docs/ACCESO_FIREBASE.md).
+1. **Operador**: crea muestras en terreno (foto + conteo).
+2. **Supervisor**: revisa en la oficina y emite "Validar" o "Observar".
+3. **Analista**: consulta historial, dashboard y exporta reportes.
 
-La versión debug también permite probar sin cuentas mediante **Ingresar en Modo Demostración (Offline)**. En este modo se puede elegir un perfil y se trabaja con una base de datos separada, con centros y muestras de ejemplo. El encabezado identifica la demostración. Este acceso no está disponible en release.
+![Flujo UML](docs/diseno/flujo-usuario-uml.png)
 
-## Uso básico
+---
 
-Como operador, crea una muestra, completa los datos, agrega una foto y registra el conteo. Revisa el resumen y guarda. Busca el registro en el historial para abrir su detalle.
+## Paleta de Colores
 
-Como supervisor, abre una muestra y elige Validar u Observar. Si la observas, escribe el motivo. La revisión se realiza en el mismo dispositivo donde se guardó la muestra.
+| Nombre | Código | Uso |
+|---|---|---|
+| Principal | `#00509E` | Barras superiores y acciones principales |
+| Secundario | `#4DA6FF` | Botones secundarios y selección |
+| Fondo | `#F5F5F5` | Fondo general y tarjetas |
+| Texto | `#212121` | Lectura general y etiquetas |
+| Validado | `#2E7D32` | Muestras aprobadas / éxito |
+| Alerta | `#FF6D2D` | Observaciones y errores |
 
-## Tecnologías y alcance
+---
 
-Kotlin, Jetpack Compose, Material 3, Navigation, ViewModel, StateFlow, Room y Firebase Authentication, con organización MVVM.
+## Estructura del Proyecto
 
-Las muestras y fotos se guardan localmente; todavía no se sincronizan entre teléfonos. La carpeta `AquaSample_DB` contiene los scripts MySQL preparados por el equipo, pero esa base aún no está conectada a la app. El alcance de seguridad y las tareas pendientes se detallan en [Integración](docs/INTEGRACION.md).
+```
+aldemar/              App Android (Kotlin, Compose, MVVM, offline-first)
+backend/              API REST Spring Boot 3 (JPA, OpenAPI/Swagger)
+AquaSample_DB/        Scripts SQL para inicialización
+docs/diseno/          Logo, flujo UML y colores del proyecto
+```
 
-## Documentación
+### Stack Técnico
 
-- [Estructura del código](docs/ESTRUCTURA.md)
-- [Resultados de verificación](VERIFICACION.md)
-- [Guía de presentación y defensa](docs/GUIA_PRESENTACION.md)
-- [Pruebas manuales](docs/PRUEBAS_MANUALES.md)
-- [Cambios de integración](docs/INTEGRACION.md)
-- [Diseños y evidencias originales](docs)
+- **Android**: Kotlin, Jetpack Compose + Material 3, MVVM, Room (BD local), WorkManager (sync en background), CameraX + Coil + Telephoto (conteo sobre foto), Retrofit (APIs), Firebase Auth.
+- **Backend**: Spring Boot 3.3+, OpenAPI/Swagger, JPA, H2 (default) o MySQL.
+- **Testing**: JUnit + MockK + JaCoCo >90% cobertura.
+- **APIs Externas**: Open-Meteo Marine (condiciones marinas en terreno, cacheable offline).
+
+---
+
+## Cómo Ejecutar desde Cero
+
+### Paso 1 — Backend Spring Boot
+
+Requisitos: JDK 17+ y Maven.
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+**Resultado**: API en `http://localhost:8080`  
+**Swagger UI**: <http://localhost:8080/swagger-ui.html>
+
+### Paso 2 — App Android
+
+Requisitos: Android Studio, JDK 17, SDK 35, `google-services.json` en `aldemar/app/`.
+
+```bash
+cd aldemar
+./gradlew installDebug
+```
+
+**Configuración**: la URL del backend es `http://10.0.2.2:8080/api/` en emulador (o IP local en dispositivo real); se modifica en Ajustes de la app.
+
+### Paso 3 — Pruebas y Cobertura JaCoCo
+
+```bash
+# Android: tests unitarios + reporte (cubre viewmodel/, repository/, model/, remote/, worker/)
+cd aldemar
+./gradlew testDebugUnitTest jacocoTestReport
+# → app/build/reports/jacoco/jacocoTestReport/html/index.html
+
+# Backend
+cd backend
+mvn test
+# → target/site/jacoco/index.html
+```
+
+### Paso 4 — APK Release Firmada
+
+**Una sola vez** (no subir `.jks` a git):
+
+```bash
+keytool -genkeypair -v -keystore aquasample-release.jks -alias aquasample \
+        -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Luego:
+
+```bash
+# Copia aldmar/keystore.properties.example → aldemar/keystore.properties
+# Completa storeFile, storePassword, keyAlias, keyPassword
+
+cd aldemar
+./gradlew assembleRelease
+# → app/build/outputs/apk/release/
+```
+
+**Nota**: `*.jks`, `*.keystore` y `keystore.properties` están en `.gitignore`. Sin `keystore.properties`, el build genera un APK sin firmar.
+
+---
+
+## Detalles Arquitectónicos
+
+- **MVVM**: Pantallas Compose → ViewModel (StateFlow) → Repository → Room / red.
+- **Offline-First**: Room es la fuente de verdad. Cambios locales quedan PENDIENTE_SINCRONIZACION. SyncSamplesWorker envía POST /api/samples y maneja 409 (conflicto) con PUT por code.
+- **Sincronización**: fallos marcados como ERROR_SINCRONIZACION se reintentan; rol y claims vienen de Firebase.
+- **Marinas**: Open-Meteo Marine API cacheada en DataStore para uso sin red.

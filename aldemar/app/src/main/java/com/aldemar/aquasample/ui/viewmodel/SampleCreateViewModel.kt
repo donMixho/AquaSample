@@ -4,30 +4,38 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aldemar.aquasample.data.local.entity.SampleEntity
+import com.aldemar.aquasample.data.model.MarkerSerializer
+import com.aldemar.aquasample.data.model.SampleCount
+import com.aldemar.aquasample.data.model.SampleMarker
 import com.aldemar.aquasample.data.repository.PhotoStorage
 import com.aldemar.aquasample.data.repository.SampleRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.File
 import java.io.Serializable
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.UUID
 
 data class CreateSampleUiState(
     val centerName: String = "Centro Huar",
     val trainNumber: String = "",
     val lineNumber: String = "",
-    val sampleDate: String = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault()).format(Date()),
-    val sectionLengthMeters: String = "1.0",
+    val timestamp: Long = System.currentTimeMillis(),
+    val sampleDate: String = SampleFormat.dateTime(timestamp),
+    val concession: String = "",
+    val sectionLengthCm: String = "100",
     val operatorName: String = "",
     val pendingPhotoUri: String? = null,
     val photoPath: String? = null,
     val photoErrorMessage: String? = null,
     val isPhotoBusy: Boolean = false,
+    /** Texto del campo "número exacto"; refleja siempre [musselCount] salvo mientras se edita. */
     val countText: String = "0",
+    /** Marcas puestas sobre la foto (coordenadas normalizadas). */
+    val markers: List<SampleMarker> = emptyList(),
+    /** Corrección manual: total = marcas + ajuste. */
+    val manualAdjustment: Int = 0,
     val observations: String = "",
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
@@ -36,7 +44,8 @@ data class CreateSampleUiState(
     val fieldErrors: Map<String, String> = emptyMap(),
     val code: String = "MUE-${UUID.randomUUID()}"
 ) : Serializable {
-    val musselCount: Int get() = countText.trim().toIntOrNull() ?: 0
+    /** Conteo final = marcas + ajuste manual (es lo que se guarda como manualCount). */
+    val musselCount: Int get() = SampleCount.total(markers.size, manualAdjustment)
 }
 
 class SampleCreateViewModel(
@@ -58,13 +67,49 @@ class SampleCreateViewModel(
     fun updateCenter(value: String) { state = state.copy(centerName = value.take(101), fieldErrors = state.fieldErrors - "center") }
     fun updateTrain(value: String) { state = state.copy(trainNumber = value.take(101), fieldErrors = state.fieldErrors - "train") }
     fun updateLine(value: String) { state = state.copy(lineNumber = value.take(101), fieldErrors = state.fieldErrors - "line") }
-    fun updateSectionLength(value: String) { state = state.copy(sectionLengthMeters = value.take(32), fieldErrors = state.fieldErrors - "length") }
+    fun updateConcession(value: String) { state = state.copy(concession = value.take(101), fieldErrors = state.fieldErrors - "concession") }
+    fun updateSectionLength(value: String) {
+        val text = value.take(8)
+        // Valida mientras se escribe, para que el mensaje aparezca bajo el campo de inmediato.
+        val error = SampleValidation.validateLength(text)
+        state = state.copy(sectionLengthCm = text, fieldErrors = (state.fieldErrors - "length") +
+            if (error == null) emptyMap() else mapOf("length" to error))
+    }
     fun updateObservations(value: String) { state = state.copy(observations = value.take(2000)) }
+
+    /** Edición directa del total: se traduce a ajuste manual y las marcas se conservan. */
     fun updateCount(value: String) {
         val text = value.take(16)
         val error = SampleValidation.validateCount(text)
-        state = state.copy(countText = text, fieldErrors = (state.fieldErrors - "count") +
-            if (error == null) emptyMap() else mapOf("count" to error))
+        val target = text.trim().toIntOrNull()
+        state = state.copy(
+            countText = text,
+            manualAdjustment = if (error == null && target != null)
+                SampleCount.adjustmentFor(target, state.markers.size) else state.manualAdjustment,
+            fieldErrors = (state.fieldErrors - "count") + if (error == null) emptyMap() else mapOf("count" to error)
+        )
+    }
+
+    /** Agrega una marca en coordenadas normalizadas (0..1 sobre la imagen original). */
+    fun addMarker(x: Float, y: Float) {
+        val marker = SampleMarker.ofOrNull(x, y) ?: return
+        val s = state
+        if (s.markers.size >= SampleCount.MAX_MARKERS) return
+        if (s.markers.size + 1 + s.manualAdjustment > SampleCount.MAX_COUNT) return
+        applyMarkers(s.markers + marker)
+    }
+    fun undoLastMarker() {
+        val s = state
+        if (s.markers.isNotEmpty()) applyMarkers(s.markers.dropLast(1))
+    }
+    fun clearMarkers() = applyMarkers(emptyList())
+
+    /** Cambia las marcas conservando el ajuste manual (acotado) y sincroniza el texto del contador. */
+    private fun applyMarkers(markers: List<SampleMarker>) {
+        val adjustment = SampleCount.normalizeAdjustment(markers.size, state.manualAdjustment)
+        state = state.copy(markers = markers, manualAdjustment = adjustment,
+            countText = SampleCount.total(markers.size, adjustment).toString(),
+            fieldErrors = state.fieldErrors - "count")
     }
     fun incrementCount(amount: Int) {
         val next = (state.musselCount.toLong() + amount).coerceIn(0, SampleValidation.MAX_COUNT.toLong())
@@ -72,7 +117,7 @@ class SampleCreateViewModel(
     }
     fun validateStep1(): Boolean {
         val errors = SampleValidation.validateLocation(state.centerName, state.trainNumber,
-            state.lineNumber, state.operatorName, state.sectionLengthMeters)
+            state.lineNumber, state.operatorName, state.sectionLengthCm, state.concession)
         state = state.copy(fieldErrors = errors, errorMessage = null)
         return errors.isEmpty()
     }
@@ -88,25 +133,33 @@ class SampleCreateViewModel(
         return true
     }
     fun setPhotoError(message: String) { state = state.copy(photoErrorMessage = message) }
-    fun prepareCamera(onReady: (String) -> Unit) {
+    /**
+     * Reserva el archivo de la foto (filesDir/images, nombre con el código de la muestra) y lo entrega
+     * a CameraX. Mientras dura la captura [CreateSampleUiState.isPhotoBusy] bloquea otras acciones;
+     * la pantalla debe terminar siempre con [captureFinished].
+     */
+    fun prepareCapture(onReady: (File) -> Unit) {
         if (state.isPhotoBusy) return
         state = state.copy(isPhotoBusy = true, photoErrorMessage = null)
         viewModelScope.launch {
             try {
                 photos.discard(state.pendingPhotoUri)
-                val uri = photos.prepareCamera()
-                state = state.copy(pendingPhotoUri = uri, isPhotoBusy = false)
-                onReady(uri)
+                val target = photos.prepareCapture(state.code)
+                state = state.copy(pendingPhotoUri = target.uri)
+                onReady(target.file)
             } catch (e: CancellationException) { throw e
             } catch (e: Exception) {
                 photos.discard(state.pendingPhotoUri)
                 state = state.copy(pendingPhotoUri = null, isPhotoBusy = false,
-                    photoErrorMessage = "No se pudo abrir la cámara. Puedes usar la galería.")
+                    photoErrorMessage = "No se pudo preparar la captura. Puedes usar la galería.")
             }
         }
     }
-    fun cameraResult(success: Boolean) {
-        if (!success) discardPendingPhoto()
+    fun captureFinished(success: Boolean, message: String? = null) {
+        if (success) { state = state.copy(isPhotoBusy = false); return }
+        discardPendingPhoto()
+        state = state.copy(isPhotoBusy = false,
+            photoErrorMessage = message ?: "No se pudo capturar la fotografía. Reintenta o usa la galería.")
     }
     fun discardPendingPhoto() {
         val uri = state.pendingPhotoUri
@@ -126,6 +179,11 @@ class SampleCreateViewModel(
                 val path = operation()
                 val oldPhoto = state.photoPath
                 state = state.copy(photoPath = path, pendingPhotoUri = null, isPhotoBusy = false, photoErrorMessage = null)
+                // Las marcas pertenecen a la foto anterior: se descartan, pero el total se conserva como ajuste.
+                if (oldPhoto != path && state.markers.isNotEmpty()) {
+                    val total = state.musselCount
+                    state = state.copy(markers = emptyList(), manualAdjustment = total, countText = total.toString())
+                }
                 if (oldPhoto != path) photos.discard(oldPhoto)
             } catch (e: CancellationException) { throw e
             } catch (e: Exception) {
@@ -145,11 +203,13 @@ class SampleCreateViewModel(
         viewModelScope.launch {
             try {
                 photos.verify(checkNotNull(snapshot.photoPath))
-                val entity = SampleEntity(code = snapshot.code, centerName = snapshot.centerName.trim(),
-                    trainNumber = snapshot.trainNumber.trim(), lineNumber = snapshot.lineNumber.trim(),
-                    sampleDate = snapshot.sampleDate,
-                    sectionLengthMeters = snapshot.sectionLengthMeters.trim().replace(',', '.').toDouble(),
-                    operatorName = snapshot.operatorName.trim(), musselCount = snapshot.musselCount,
+                val entity = SampleEntity(code = snapshot.code,
+                    concession = snapshot.concession.trim().ifBlank { null }, center = snapshot.centerName.trim(),
+                    train = snapshot.trainNumber.trim(), line = snapshot.lineNumber.trim(),
+                    timestamp = snapshot.timestamp,
+                    sectionLengthCm = checkNotNull(SampleFormat.parseCm(snapshot.sectionLengthCm)),
+                    operatorName = snapshot.operatorName.trim(), manualCount = snapshot.musselCount,
+                    markerCoordinatesJson = MarkerSerializer.toJson(snapshot.markers),
                     observations = snapshot.observations.trim().ifBlank { "Sin observaciones adicionales." },
                     photoPath = snapshot.photoPath)
                 val id = repository.insertSample(entity)
