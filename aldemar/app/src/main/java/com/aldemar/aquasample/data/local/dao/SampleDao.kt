@@ -18,6 +18,20 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface SampleDao {
+    @Transaction
+    suspend fun finishUpload(snapshot: SampleEntity, status: SyncStatus) {
+        if (getSampleByIdOnce(snapshot.id) == snapshot) updateSyncStatus(snapshot.id, status)
+    }
+    /** Merge atomically: never replace a locally edited row or its private photo URI. */
+    @Transaction
+    suspend fun mergeRemote(sample: SampleEntity): Boolean {
+        val id = findIdByCode(sample.code)
+        val local = id?.let { getSampleByIdOnce(it) }
+        if (local != null && local.syncStatus != SyncStatus.SINCRONIZADO) return false
+        if (local == null) insertSample(sample.copy(id = 0, photoPath = null, syncStatus = SyncStatus.SINCRONIZADO))
+        else updateSample(sample.copy(id = local.id, photoPath = local.photoPath, syncStatus = SyncStatus.SINCRONIZADO))
+        return true
+    }
     @Query("SELECT id FROM samples WHERE code = :code LIMIT 1")
     suspend fun findIdByCode(code: String): Long?
 

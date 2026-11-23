@@ -49,6 +49,10 @@ fun AquaNavigation(
     val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
 
     val app = LocalContext.current.applicationContext as AquaSampleApp
+    androidx.compose.runtime.LaunchedEffect(authUiState.isLoggedIn, authUiState.isDemo) {
+        if (authUiState.isLoggedIn && !authUiState.isDemo)
+            com.aldemar.aquasample.worker.SyncScheduler.syncNow(app)
+    }
     val repository = if (authUiState.isDemo) app.demoRepository else realRepository
     val mode = if (authUiState.isDemo) "demo" else "real"
     val factory = remember(repository) {

@@ -10,3 +10,5 @@
 *.hprof
 keystore.properties
 **/keystore.properties
+**/target/
+backend/data/

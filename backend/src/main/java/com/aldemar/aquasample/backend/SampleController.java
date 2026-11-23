@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -67,14 +69,12 @@ public class SampleController {
     }
 
     @Operation(summary = "Cambia el estado de revisión (solo SUPERVISOR)",
-            description = "Header X-User-Role: OPERATOR | SUPERVISOR | ANALYST. Si falta se asume SUPERVISOR (pruebas rápidas); "
-                    + "valores desconocidos se tratan como OPERATOR. OPERATOR y ANALYST reciben 403.")
+            description = "Requiere token Firebase válido con claim role SUPERVISOR. X-User-Role no concede permisos.")
     @PutMapping("/{code}/review")
     public SampleDto review(@PathVariable String code,
                             @Parameter(description = "Rol del usuario") @RequestHeader(value = "X-User-Role", required = false) String role,
                             @Valid @RequestBody ReviewDto dto) {
-        String effective = role == null || role.isBlank() ? "SUPERVISOR" : role.trim().toUpperCase();
-        if (!effective.equals("SUPERVISOR"))
+        if (!isSupervisor())
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el SUPERVISOR puede revisar muestras");
         SampleStatus st = SampleStatus.parse(dto.reviewStatus());
         if (st == null) throw bad("reviewStatus inválido: " + dto.reviewStatus());
@@ -99,6 +99,13 @@ public class SampleController {
     private static String blank(String s) { return s == null || s.isBlank() ? null : s.trim(); }
 
     private static void apply(SampleRecord r, SampleDto d) {
+        // Generic create/update must not bypass the dedicated review permission.
+        SampleStatus requested = d.reviewStatus() == null ? SampleStatus.PENDIENTE_REVISION : SampleStatus.parse(d.reviewStatus());
+        if (requested == null) throw bad("reviewStatus inválido");
+        if (!isSupervisor() && (requested != SampleStatus.PENDIENTE_REVISION
+                || r.getReviewStatus() != SampleStatus.PENDIENTE_REVISION
+                || d.supervisorComment() != null || d.supervisorName() != null))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo el supervisor puede modificar un dictamen");
         r.setConcession(d.concession());
         r.setCenter(d.center());
         r.setTrain(d.train());
@@ -117,5 +124,10 @@ public class SampleController {
         }
         r.setSupervisorComment(d.supervisorComment());
         r.setSupervisorName(d.supervisorName());
+    }
+
+    private static boolean isSupervisor() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_SUPERVISOR"));
     }
 }
