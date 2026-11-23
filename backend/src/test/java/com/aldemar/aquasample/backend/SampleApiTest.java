@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@org.springframework.security.test.context.support.WithMockUser(roles = "SUPERVISOR")
 class SampleApiTest {
     @Autowired MockMvc mvc;
 
@@ -19,6 +20,28 @@ class SampleApiTest {
         return "{\"code\":\"" + code + "\",\"concession\":\"C1\",\"center\":\"Centro Huar\",\"train\":\"T1\",\"line\":\"L1\","
                 + "\"sectionLengthCm\":100,\"timestamp\":1700000000000,\"operatorName\":\"Carlos\",\"manualCount\":" + count
                 + ",\"markerCoordinatesJson\":\"[]\",\"observations\":\"ok\",\"reviewStatus\":\"PENDIENTE_REVISION\"}";
+    }
+
+    @Test
+    @org.springframework.security.test.context.support.WithAnonymousUser
+    void anonymousCannotReadOrForgeSupervisor() throws Exception {
+        mvc.perform(get("/api/samples")).andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/samples/ANY/review").header("X-User-Role", "SUPERVISOR")
+            .contentType(MediaType.APPLICATION_JSON).content("{\"reviewStatus\":\"VALIDADA\"}"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @org.springframework.security.test.context.support.WithMockUser(roles = "OPERATOR")
+    void operatorCannotValidateThroughGenericCreate() throws Exception {
+        mvc.perform(post("/api/samples").contentType(MediaType.APPLICATION_JSON)
+            .content(body("FORGED", 4).replace("PENDIENTE_REVISION", "VALIDADA")))
+            .andExpect(status().isForbidden());
+        mvc.perform(post("/api/samples").contentType(MediaType.APPLICATION_JSON).content(body("OP-OK", 4)))
+            .andExpect(status().isCreated());
+        mvc.perform(put("/api/samples/OP-OK").contentType(MediaType.APPLICATION_JSON)
+            .content(body("OP-OK", 4).replace("PENDIENTE_REVISION", "VALIDADA")))
+            .andExpect(status().isForbidden());
     }
 
     @Test
@@ -36,7 +59,7 @@ class SampleApiTest {
 
         String review = "{\"reviewStatus\":\"VALIDADA\",\"supervisorComment\":\"ok\",\"supervisorName\":\"Marcelo\"}";
         for (String role : new String[]{"OPERATOR", "ANALYST"})
-            mvc.perform(put("/api/samples/MUE-T1/review").header("X-User-Role", role)
+            mvc.perform(put("/api/samples/MUE-T1/review").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("test").roles(role)).header("X-User-Role", "SUPERVISOR")
                     .contentType(MediaType.APPLICATION_JSON).content(review)).andExpect(status().isForbidden());
         mvc.perform(get("/api/samples/validated")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
         mvc.perform(put("/api/samples/MUE-T1/review").contentType(MediaType.APPLICATION_JSON).content(review))

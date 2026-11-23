@@ -20,6 +20,12 @@ class SampleRepository(
     /** Se invoca tras cada cambio local que debe sincronizarse (dispara WorkManager). */
     private val onLocalChange: () -> Unit = {}
 ) : SyncStore {
+    override suspend fun finishUpload(snapshot: SampleEntity, status: SyncStatus) = withContext(Dispatchers.IO) {
+        sampleDao.finishUpload(snapshot, status)
+    }
+    suspend fun receiveRemote(sample: SampleEntity): Boolean = withContext(Dispatchers.IO) {
+        sampleDao.mergeRemote(sample)
+    }
 
     suspend fun findIdByCode(code: String): Long? = sampleDao.findIdByCode(code)
 

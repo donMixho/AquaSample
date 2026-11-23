@@ -356,14 +356,21 @@ class DataLayerMockkTest {
     }
 
     private fun workerWith(api: AquaSampleBackendApi, unsynced: List<SampleEntity>): SyncSamplesWorker {
+        coEvery { api.list() } returns emptyList()
         val app = mockk<AquaSampleApp>()
         val settings = mockk<AppSettings>(); coEvery { settings.backendUrl() } returns "http://localhost/api/"
         val repo = mockk<SampleRepository>()
         coEvery { repo.getUnsynced() } returns unsynced
         coEvery { repo.markSyncStatus(any(), any()) } returns Unit
+        coEvery { repo.finishUpload(any(), any()) } returns Unit
         every { app.settings } returns settings; every { app.repository } returns repo
         every { app.applicationContext } returns app
-        mockkObject(BackendClient); every { BackendClient.create(any()) } returns api
+        mockkObject(BackendClient); every { BackendClient.create(any(), any()) } returns api
+        val user = fbUser("Operador", "op@example.test")
+        firebase(user)
+        val token = mockk<GetTokenResult>()
+        every { token.token } returns "synthetic-test-token"
+        every { user.getIdToken(any()) } returns task(token)
         return SyncSamplesWorker(app, mockk<WorkerParameters>(relaxed = true))
     }
 
@@ -372,5 +379,8 @@ class DataLayerMockkTest {
         assertTrue(workerWith(ok, listOf(sample())).doWork() is ListenableWorker.Result.Success)
         val bad = mockk<AquaSampleBackendApi>(); coEvery { bad.create(any()) } throws java.io.IOException("x")
         assertTrue(workerWith(bad, listOf(sample())).doWork() is ListenableWorker.Result.Retry)
+        val worker = workerWith(ok, emptyList())
+        firebase(null)
+        assertTrue(worker.doWork() is ListenableWorker.Result.Retry)
     }
 }

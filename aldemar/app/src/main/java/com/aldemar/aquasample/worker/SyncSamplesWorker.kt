@@ -14,12 +14,23 @@ import com.aldemar.aquasample.AquaSampleApp
 import com.aldemar.aquasample.data.remote.backend.BackendClient
 import com.aldemar.aquasample.data.remote.backend.SampleSyncer
 import java.util.concurrent.TimeUnit
+import com.aldemar.aquasample.data.repository.awaitResult
 
 class SyncSamplesWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result {
         val app = applicationContext as AquaSampleApp
-        val api = BackendClient.create(app.settings.backendUrl())
+        val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser ?: return Result.retry()
+        val token = try {
+            user.getIdToken(false).awaitResult().token
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (e: Exception) { return Result.retry() }
+        if (token == null) return Result.retry()
+        val api = BackendClient.create(app.settings.backendUrl(), token)
         val r = SampleSyncer(app.repository, api).sync()
+        try {
+            com.aldemar.aquasample.data.remote.backend.SampleReceiver(api, app.repository::receiveRemote).receive()
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (e: Exception) { return Result.retry() }
         return if (r.failed > 0) Result.retry() else Result.success()
     }
 }

@@ -53,7 +53,7 @@ class FirebaseAuthRepository : AuthRepository {
     override fun logout() = auth.signOut()
 }
 
-private suspend fun <T> Task<T>.awaitResult(): T = suspendCancellableCoroutine { continuation ->
+internal suspend fun <T> Task<T>.awaitResult(): T = suspendCancellableCoroutine { continuation ->
     addOnCompleteListener { task ->
         if (continuation.isActive) {
             if (task.isSuccessful) continuation.resume(task.result)

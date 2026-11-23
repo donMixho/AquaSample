@@ -9,6 +9,7 @@ interface SyncStore {
     /** Muestras PENDIENTE_SINCRONIZACION y ERROR_SINCRONIZACION (reintento). */
     suspend fun getUnsynced(): List<SampleEntity>
     suspend fun markSyncStatus(id: Long, status: SyncStatus)
+    suspend fun finishUpload(snapshot: SampleEntity, status: SyncStatus) = markSyncStatus(snapshot.id, status)
 }
 
 data class SyncResult(val synced: Int, val failed: Int)
@@ -31,7 +32,7 @@ class SampleSyncer(private val store: SyncStore, private val api: AquaSampleBack
             } catch (e: Exception) {
                 false
             }
-            store.markSyncStatus(sample.id, if (success) SyncStatus.SINCRONIZADO else SyncStatus.ERROR_SINCRONIZACION)
+            store.finishUpload(sample, if (success) SyncStatus.SINCRONIZADO else SyncStatus.ERROR_SINCRONIZACION)
             if (success) ok++ else bad++
         }
         return SyncResult(ok, bad)
