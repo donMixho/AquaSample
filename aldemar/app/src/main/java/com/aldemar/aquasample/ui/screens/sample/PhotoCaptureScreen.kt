@@ -306,9 +306,9 @@ fun PhotoCaptureScreen(
                                 shape = RoundedCornerShape(8.dp),
                                 colors = AquaButtonColors.filled()
                             ) {
-                                Icon(Icons.Default.Camera, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Camera, contentDescription = null, tint = AquaSurface, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.size(6.dp))
-                                Text(if (busy) "Capturando…" else "Capturar", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text(if (busy) "Capturando…" else "Capturar", color = AquaSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     } else if (isPreview) {
@@ -329,10 +329,11 @@ fun PhotoCaptureScreen(
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
+                                    tint = AquaSurface,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.size(6.dp))
-                                Text(if (uiState.isPhotoBusy) "Guardando…" else "Confirmar foto", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text(if (uiState.isPhotoBusy) "Guardando…" else "Confirmar foto", color = AquaSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                             }
 
                             OutlinedButton(
@@ -368,11 +369,13 @@ fun PhotoCaptureScreen(
                             Icon(
                                 imageVector = Icons.Default.CameraAlt,
                                 contentDescription = null,
+                                tint = AquaSurface,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.size(6.dp))
                             Text(
                                 text = if (uiState.photoPath == null) "Tomar foto" else "Cambiar foto",
+                                color = AquaSurface,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
                             )

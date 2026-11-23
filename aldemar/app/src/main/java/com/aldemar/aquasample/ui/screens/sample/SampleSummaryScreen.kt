@@ -244,6 +244,7 @@ fun SampleSummaryScreen(
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
+                        tint = AquaSurface,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.size(6.dp))
