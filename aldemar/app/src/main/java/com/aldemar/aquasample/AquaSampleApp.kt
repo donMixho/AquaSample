@@ -2,6 +2,7 @@ package com.aldemar.aquasample
 
 import android.app.Application
 import com.aldemar.aquasample.data.local.AquaSampleDatabase
+import com.aldemar.aquasample.data.local.accessibility.AccessibilityPreferences
 import com.aldemar.aquasample.data.repository.SampleRepository
 import com.aldemar.aquasample.worker.SyncScheduler
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +36,7 @@ class AquaSampleApp : Application() {
     val demoRepository by lazy { SampleRepository(demoDatabase.sampleDao()) }
 
     val photoStorage by lazy { com.aldemar.aquasample.data.repository.PhotoStorage(this) }
+    val accessibilityPreferences by lazy { AccessibilityPreferences(this) }
 
     override fun onCreate() {
         super.onCreate()

@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.aldemar.aquasample.data.repository.SampleRepository
+import com.aldemar.aquasample.ui.screens.developer.DeveloperOptionsScreen
 import com.aldemar.aquasample.ui.screens.home.HomeScreen
 import com.aldemar.aquasample.ui.screens.login.LoginScreen
 import com.aldemar.aquasample.ui.screens.review.SupervisorReviewScreen
@@ -73,7 +74,7 @@ fun AquaNavigation(
             if (authUiState.isLoggedIn && route == Screen.Login.route) {
                 sampleCreateViewModel.setOperator(authUiState.currentUserName)
                 navController.navigate(Screen.Home.route) { popUpTo(Screen.Login.route) { inclusive = true } }
-            } else if (!authUiState.isLoggedIn && route != null && route != Screen.Login.route) {
+            } else if (!authUiState.isLoggedIn && route != null && route != Screen.Login.route && route != Screen.DeveloperOptions.route) {
                 navController.navigate(Screen.Login.route) { popUpTo(navController.graph.id) { inclusive = true } }
             }
         }
@@ -89,8 +90,20 @@ fun AquaNavigation(
         composable(Screen.Login.route) {
             LoginScreen(
                 authUiState = authUiState,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                onNavigateToDeveloperOptions = {
+                    navController.navigate(Screen.DeveloperOptions.route)
+                }
+            )
+        }
 
+        // ==========================================
+        // 1.5. Pantalla Opciones de Desarrollador
+        // ==========================================
+        composable(Screen.DeveloperOptions.route) {
+            DeveloperOptionsScreen(
+                authViewModel = authViewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

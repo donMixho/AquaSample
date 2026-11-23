@@ -12,35 +12,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldemar.aquasample.data.model.SampleStatus
-import com.aldemar.aquasample.ui.theme.AquaBackground
-import com.aldemar.aquasample.ui.theme.AquaOutline
-import com.aldemar.aquasample.ui.theme.AquaTextSecondary
-import com.aldemar.aquasample.ui.theme.StatusAlertBg
-import com.aldemar.aquasample.ui.theme.StatusAlertDark
-import com.aldemar.aquasample.ui.theme.StatusPending
-import com.aldemar.aquasample.ui.theme.StatusPendingBg
-import com.aldemar.aquasample.ui.theme.StatusValidated
-import com.aldemar.aquasample.ui.theme.StatusValidatedBg
+import com.aldemar.aquasample.ui.theme.LocalAquaColors
 
 /**
  * Badge o etiqueta visual para representar el estado de la muestra.
  *
- * Aplica la forma de píldora (Pill shape 9999.dp) y los colores semánticos definidos:
- * - VALIDADO: Fondo verde claro (#E8F5E9) con texto verde oscuro (#2E7D32).
- * - OBSERVADO: Fondo naranja claro (#FFF3E0) con texto naranja oscuro (#B84300, contraste 5:1).
- * - PENDIENTE: Fondo azul claro (#EBF5FF) con texto azul (#00509E).
+ * Se adapta dinámicamente según la preferencia de accesibilidad y filtro de daltonismo activo.
  */
 @Composable
 fun StatusBadge(
     status: SampleStatus,
     modifier: Modifier = Modifier
 ) {
+    val aquaColors = LocalAquaColors.current
+
     val (bgColor, textColor, borderColor) = when (status) {
-        SampleStatus.VALIDADA -> Triple(StatusValidatedBg, StatusValidated, StatusValidated.copy(alpha = 0.3f))
-        SampleStatus.OBSERVADA -> Triple(StatusAlertBg, StatusAlertDark, StatusAlertDark.copy(alpha = 0.4f))
+        SampleStatus.VALIDADA -> Triple(aquaColors.statusValidatedBg, aquaColors.statusValidated, aquaColors.statusValidated.copy(alpha = 0.3f))
+        SampleStatus.OBSERVADA -> Triple(aquaColors.statusAlertBg, aquaColors.statusAlertDark, aquaColors.statusAlertDark.copy(alpha = 0.4f))
         SampleStatus.PENDIENTE_REVISION, SampleStatus.CORREGIDA ->
-            Triple(StatusPendingBg, StatusPending, StatusPending.copy(alpha = 0.3f))
-        SampleStatus.BORRADOR -> Triple(AquaBackground, AquaTextSecondary, AquaOutline)
+            Triple(aquaColors.statusPendingBg, aquaColors.statusPending, aquaColors.statusPending.copy(alpha = 0.3f))
+        SampleStatus.BORRADOR -> Triple(aquaColors.background, aquaColors.textSecondary, aquaColors.outline)
     }
 
     Box(

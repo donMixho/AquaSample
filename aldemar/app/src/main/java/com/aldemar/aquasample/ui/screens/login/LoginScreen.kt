@@ -2,6 +2,7 @@ package com.aldemar.aquasample.ui.screens.login
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,15 +25,11 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Tab
@@ -47,21 +43,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aldemar.aquasample.R
-import com.aldemar.aquasample.data.model.UserRole
 import com.aldemar.aquasample.ui.components.AquaButtonColors
 import com.aldemar.aquasample.ui.theme.AquaBackground
 import com.aldemar.aquasample.ui.theme.AquaOutline
@@ -70,8 +68,6 @@ import com.aldemar.aquasample.ui.theme.AquaSecondary
 import com.aldemar.aquasample.ui.theme.AquaSurface
 import com.aldemar.aquasample.ui.theme.AquaTextPrimary
 import com.aldemar.aquasample.ui.theme.AquaTextSecondary
-import com.aldemar.aquasample.BuildConfig
-import androidx.compose.runtime.saveable.rememberSaveable
 import com.aldemar.aquasample.ui.viewmodel.AuthUiState
 import com.aldemar.aquasample.ui.viewmodel.AuthViewModel
 
@@ -80,15 +76,14 @@ import com.aldemar.aquasample.ui.viewmodel.AuthViewModel
  *
  * Incluye:
  * - Autenticación remota mediante Firebase Auth (Email/Contraseña).
- * - Rol real obtenido del token; selección de perfil solo para demostración.
- * - Registro de nuevos usuarios y modo offline de demostración.
+ * - Acceso a Opciones de Desarrollador para modo de demostración offline.
  */
 @Composable
 fun LoginScreen(
     authUiState: AuthUiState,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    onNavigateToDeveloperOptions: () -> Unit = {}
 ) {
-    var selectedRole by rememberSaveable { mutableStateOf(UserRole.OPERATOR) }
     var userName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -126,9 +121,6 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(AquaBackground)
-            // Respeta barras del sistema y teclado: la tarjeta (con scroll) se encoge
-            // en vez de quedar tapada por el teclado.
-            .safeDrawingPadding()
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -209,13 +201,13 @@ fun LoginScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // Campo Correo electrónico
+                // Campo Correo Electrónico (Firebase)
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Correo electrónico") },
+                    label = { Text("Correo Electrónico (Firebase)") },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Email,
@@ -274,29 +266,31 @@ fun LoginScreen(
                     shape = RoundedCornerShape(8.dp)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                if (selectedTab == 1) {
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                // Campo Nombre (registro o demostración)
-                OutlinedTextField(
-                    value = userName,
-                    onValueChange = { userName = it },
-                    label = { Text("Nombre (registro o demostración)") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Badge,
-                            contentDescription = null,
-                            tint = AquaPrimary
-                        )
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AquaSecondary,
-                        focusedLabelColor = AquaPrimary,
-                        unfocusedBorderColor = AquaOutline
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                )
+                    // Campo Nombre del Profesional en Registro
+                    OutlinedTextField(
+                        value = userName,
+                        onValueChange = { userName = it },
+                        label = { Text("Nombre del Profesional") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Badge,
+                                contentDescription = null,
+                                tint = AquaPrimary
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = AquaSecondary,
+                            focusedLabelColor = AquaPrimary,
+                            unfocusedBorderColor = AquaOutline
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -339,71 +333,8 @@ fun LoginScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                if (BuildConfig.DEBUG) {
-                Text("Demostración: datos separados del acceso real.", color = AquaTextSecondary, fontSize = 12.sp)
-                // Selector de Roles mediante Chips
-                Text(
-                    text = "Perfil de demostración",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = AquaTextPrimary,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    UserRole.entries.forEach { role ->
-                        FilterChip(
-                            selected = selectedRole == role,
-                            onClick = {
-                                selectedRole = role
-                                if (userName.isBlank() || UserRole.entries.any { it.defaultUser == userName }) {
-                                    userName = role.defaultUser
-                                }
-                            },
-                            label = { Text(role.shortLabel, maxLines = 1, fontSize = 13.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AquaPrimary,
-                                selectedLabelColor = AquaSurface
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Botón alternativo para demostración offline sin requerir credenciales Firebase
-                OutlinedButton(
-                    enabled = !authUiState.isLoading,
-                    onClick = {
-                        authViewModel.loginDemo(
-                            role = selectedRole,
-                            customName = userName
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = "Ingresar en Modo Demostración (Offline)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = AquaPrimary
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
@@ -412,6 +343,22 @@ fun LoginScreen(
                         text = "El rol de la cuenta lo asigna el administrador.",
                         fontSize = 11.sp,
                         color = AquaTextSecondary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Enlace a Opciones de Desarrollador (Abajo a la Derecha en letras grises subrayadas)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = "opciones de desarrollador",
+                        fontSize = 12.sp,
+                        color = AquaTextSecondary,
+                        style = TextStyle(textDecoration = TextDecoration.Underline),
+                        modifier = Modifier.clickable { onNavigateToDeveloperOptions() }
                     )
                 }
             }
