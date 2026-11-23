@@ -285,7 +285,7 @@ fun CountObservationsScreen(
                             shape = RoundedCornerShape(8.dp),
                             colors = AquaButtonColors.filled()
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Más 1")
+                            Icon(Icons.Default.Add, contentDescription = "Más 1", tint = AquaSurface)
                         }
 
                         Button(
@@ -293,7 +293,7 @@ fun CountObservationsScreen(
                             shape = RoundedCornerShape(8.dp),
                             colors = AquaButtonColors.filled()
                         ) {
-                            Text("+10", fontWeight = FontWeight.Bold)
+                            Text("+10", color = AquaSurface, fontWeight = FontWeight.Bold)
                         }
 
                         Button(
@@ -301,7 +301,7 @@ fun CountObservationsScreen(
                             shape = RoundedCornerShape(8.dp),
                             colors = AquaButtonColors.filled(AquaPrimaryVariant)
                         ) {
-                            Text("+50", fontWeight = FontWeight.Bold)
+                            Text("+50", color = AquaSurface, fontWeight = FontWeight.Bold)
                         }
                     }
 

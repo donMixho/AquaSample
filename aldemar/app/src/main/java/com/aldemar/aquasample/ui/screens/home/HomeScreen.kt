@@ -121,7 +121,18 @@ fun HomeScreen(
         message?.let { snackbar.showSnackbar(it); viewModel.consumeMessage() }
     }
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = {
+            SnackbarHost(snackbar) { data ->
+                androidx.compose.material3.Snackbar(
+                    containerColor = AquaPrimary,
+                    contentColor = AquaSurface,
+                    actionContentColor = AquaSurface,
+                    dismissActionContentColor = AquaSurface
+                ) {
+                    Text(data.visuals.message, color = AquaSurface)
+                }
+            }
+        },
         topBar = {
             AquaTopBar(
                 title = if (authUiState.isDemo) "AquaSample · DEMOSTRACIÓN" else "AquaSample · ALDEMAR",
@@ -166,7 +177,13 @@ fun HomeScreen(
                     containerColor = AquaPrimary,
                     contentColor = AquaSurface,
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Nueva Muestra", fontWeight = FontWeight.Bold) }
+                    text = {
+                        Text(
+                            "Nueva Muestra",
+                            color = AquaSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 )
             }
         },
