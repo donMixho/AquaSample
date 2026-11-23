@@ -63,7 +63,18 @@ fun DashboardScreen(role: UserRole, viewModel: AnalyticsViewModel, onNavigateBac
     val points = remember(samples, line) { line?.let { DashboardMetrics.evolution(samples, it) }.orEmpty() }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = {
+            SnackbarHost(snackbar) { data ->
+                androidx.compose.material3.Snackbar(
+                    containerColor = com.aldemar.aquasample.ui.theme.AquaPrimary,
+                    contentColor = com.aldemar.aquasample.ui.theme.AquaSurface,
+                    actionContentColor = com.aldemar.aquasample.ui.theme.AquaSurface,
+                    dismissActionContentColor = com.aldemar.aquasample.ui.theme.AquaSurface
+                ) {
+                    Text(data.visuals.message, color = com.aldemar.aquasample.ui.theme.AquaSurface)
+                }
+            }
+        },
         topBar = {
             AquaTopBar(title = "Dashboard", canNavigateBack = true, onNavigateBack = onNavigateBack, actions = {
                 if (role.canExport) ExportMenuButton(samples) { message = it }
