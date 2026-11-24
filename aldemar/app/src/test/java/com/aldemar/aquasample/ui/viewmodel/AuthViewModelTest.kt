@@ -92,17 +92,13 @@ class AuthViewModelTest {
         runCurrent(); vm.loginDemo(UserRole.SUPERVISOR, "Demo")
         assertFalse(vm.uiState.value.isLoggedIn); assertFalse(vm.uiState.value.isDemo)
     }
-    @Test fun demoStateRestoresAndLogoutRemovesIt() = runTest(dispatcher) {
+    @Test fun demoStateDoesNotRestoreOnRestart() = runTest(dispatcher) {
         val handle = SavedStateHandle()
         val repo = FakeAuth(); val first = vm(repo, handle = handle); runCurrent()
         first.loginDemo(UserRole.SUPERVISOR, "Demo")
+        assertTrue(first.uiState.value.isDemo)
         val restored = vm(repo, handle = handle)
-        assertTrue(restored.uiState.value.isDemo)
-        assertEquals(UserRole.SUPERVISOR, restored.uiState.value.currentRole)
-        restored.logout()
         assertFalse(restored.uiState.value.isLoggedIn)
-        assertEquals(false, handle.get<Boolean>("demo"))
-        assertNull(restored.uiState.value.userId)
     }
     @Test fun registrationRequiresNameAndUsesProviderRole() = runTest(dispatcher) {
         val repo = FakeAuth(); val vm = vm(repo); runCurrent()

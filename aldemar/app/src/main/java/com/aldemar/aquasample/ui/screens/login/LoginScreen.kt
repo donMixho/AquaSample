@@ -85,14 +85,14 @@ import com.aldemar.aquasample.ui.viewmodel.AuthViewModel
 fun LoginScreen(
     authUiState: AuthUiState,
     authViewModel: AuthViewModel,
-    onNavigateToDeveloperOptions: () -> Unit = {}
+    onNavigateToDeveloperOptions: () -> Unit = {},
+    onNavigateToDemoLogin: () -> Unit = {}
 ) {
     var userName by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Login, 1: Registro
-    var selectedDemoRole by rememberSaveable { mutableStateOf(UserRole.OPERATOR) }
 
     // Diálogo de Error de Firebase
     if (authUiState.errorMessage != null) {
@@ -352,55 +352,19 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Text(
-                    text = "Modo demostración",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = AquaPrimary,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(
-                    text = "Datos locales separados de las cuentas Firebase.",
-                    fontSize = 11.sp,
-                    color = AquaTextSecondary,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    UserRole.entries.forEach { role ->
-                        FilterChip(
-                            selected = selectedDemoRole == role,
-                            onClick = { selectedDemoRole = role },
-                            label = { Text(role.shortLabel, fontSize = 11.sp, maxLines = 1) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AquaPrimary,
-                                selectedLabelColor = AquaSurface
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
                 Button(
-                    onClick = {
-                        authViewModel.loginDemo(
-                            role = selectedDemoRole,
-                            customName = selectedDemoRole.defaultUser
-                        )
-                    },
+                    onClick = onNavigateToDemoLogin,
                     enabled = !authUiState.isLoading,
-                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = AquaButtonColors.filled()
                 ) {
-                    Text("Ingresar a demostración", color = AquaSurface, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Modo Demostración (con contraseña)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AquaSurface
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -411,7 +375,7 @@ fun LoginScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = "Accesibilidad y opciones de desarrollador",
+                        text = "Accesibilidad",
                         fontSize = 12.sp,
                         color = AquaTextSecondary,
                         style = TextStyle(textDecoration = TextDecoration.Underline),
@@ -420,5 +384,14 @@ fun LoginScreen(
                 }
             }
         }
+
+        Text(
+            text = "Todos los derechos de la aplicación son para ©LosRoyales",
+            fontSize = 10.sp,
+            color = AquaTextSecondary,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(8.dp)
+        )
     }
 }

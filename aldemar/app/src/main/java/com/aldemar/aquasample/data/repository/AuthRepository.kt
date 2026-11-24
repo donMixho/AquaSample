@@ -10,12 +10,19 @@ import kotlin.coroutines.resumeWithException
 
 data class AuthAccount(val uid: String, val name: String, val email: String?, val role: UserRole)
 
-/** Only a trusted Firebase token can grant an elevated role; anything else is OPERATOR. */
+/** Only a trusted Firebase token or specific test emails can grant an elevated role; anything else is OPERATOR. */
 object RolePolicy {
-    fun fromClaims(claims: Map<String, Any>): UserRole = when (claims["role"]) {
-        "SUPERVISOR" -> UserRole.SUPERVISOR
-        "ANALYST" -> UserRole.ANALYST
-        else -> UserRole.OPERATOR
+    fun fromClaims(claims: Map<String, Any>, email: String? = null): UserRole {
+        val roleClaim = claims["role"] as? String
+        val lowerEmail = email?.lowercase()?.trim()
+        return when {
+            roleClaim == "SUPERVISOR" -> UserRole.SUPERVISOR
+            roleClaim == "ANALYST" -> UserRole.ANALYST
+            lowerEmail == "anto.supervisor@aldemar.cl" -> UserRole.SUPERVISOR
+            lowerEmail == "anto.rivas@duocuc.cl" -> UserRole.SUPERVISOR
+            lowerEmail == "analista@aldemar.cl" -> UserRole.ANALYST
+            else -> UserRole.OPERATOR
+        }
     }
 }
 
@@ -33,7 +40,7 @@ class FirebaseAuthRepository : AuthRepository {
         val user = auth.currentUser ?: error("Sesión no disponible")
         val token = user.getIdToken(forceRefresh).awaitResult()
         return AuthAccount(user.uid, user.displayName?.takeIf { it.isNotBlank() }
-            ?: user.email?.substringBefore("@") ?: "Usuario", user.email, RolePolicy.fromClaims(token.claims))
+            ?: user.email?.substringBefore("@") ?: "Usuario", user.email, RolePolicy.fromClaims(token.claims, user.email))
     }
 
     override suspend fun restore(): AuthAccount? =

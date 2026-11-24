@@ -1,5 +1,7 @@
 package com.aldemar.aquasample.ui.screens.home
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +29,9 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
@@ -40,33 +45,43 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.aldemar.aquasample.data.export.ReportExporter
+import com.aldemar.aquasample.data.export.ReportFormat
+import com.aldemar.aquasample.data.export.ReportRows
 import com.aldemar.aquasample.data.local.entity.SampleEntity
 import com.aldemar.aquasample.data.model.SampleStatus
 import com.aldemar.aquasample.ui.viewmodel.SampleFormat
 import com.aldemar.aquasample.ui.components.AquaTopBar
 import com.aldemar.aquasample.ui.components.DateField
-import com.aldemar.aquasample.ui.components.ExportMenuButton
 import com.aldemar.aquasample.ui.components.FilterDropdown
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.CompareArrows
-import androidx.compose.runtime.setValue
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import com.aldemar.aquasample.ui.components.StatusBadge
+import com.aldemar.aquasample.ui.components.LogoutConfirmationDialog
+import com.aldemar.aquasample.ui.components.MarineConditionsCard
 import com.aldemar.aquasample.ui.theme.AquaBackground
 import com.aldemar.aquasample.ui.theme.AquaOutline
 import com.aldemar.aquasample.ui.theme.AquaPrimary
@@ -78,6 +93,7 @@ import com.aldemar.aquasample.ui.theme.StatusAlertBg
 import com.aldemar.aquasample.ui.theme.StatusAlertDark
 import com.aldemar.aquasample.ui.viewmodel.AuthUiState
 import com.aldemar.aquasample.ui.viewmodel.SampleListViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla 2: Historial de Muestras y Panel Principal (HomeScreen).
@@ -99,6 +115,7 @@ fun HomeScreen(
     onNavigateToReview: (Long) -> Unit,
     onNavigateToDashboard: () -> Unit,
     onNavigateToCompare: () -> Unit,
+    onNavigateToDeveloperOptions: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     val listState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -113,17 +130,32 @@ fun HomeScreen(
     val endDate by viewModel.endDate.collectAsStateWithLifecycle()
     val trains by viewModel.trains.collectAsStateWithLifecycle()
     val lineOptions by viewModel.lines.collectAsStateWithLifecycle()
-    var showAdvanced by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
 
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        LogoutConfirmationDialog(
+            onConfirm = {
+                showLogoutDialog = false
+                onLogout()
+            },
+            onDismiss = { showLogoutDialog = false }
+        )
+    }
+
     LaunchedEffect(message) {
         message?.let { snackbar.showSnackbar(it); viewModel.consumeMessage() }
     }
     Scaffold(
         snackbarHost = {
             SnackbarHost(snackbar) { data ->
-                androidx.compose.material3.Snackbar(
+                Snackbar(
                     containerColor = AquaPrimary,
                     contentColor = AquaSurface,
                     actionContentColor = AquaSurface,
@@ -140,30 +172,95 @@ fun HomeScreen(
                 actions = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 8.dp)
+                        modifier = Modifier.padding(end = 4.dp)
                     ) {
                         Text(
                             text = authUiState.currentRole.shortLabel,
                             color = AquaSurface,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(end = 8.dp)
                         )
-                        IconButton(onClick = onNavigateToDashboard) {
-                            Icon(Icons.Default.Dashboard, contentDescription = "Dashboard", tint = AquaSurface)
-                        }
-                        IconButton(onClick = onNavigateToCompare) {
-                            Icon(Icons.Default.CompareArrows, contentDescription = "Comparar períodos", tint = AquaSurface)
-                        }
-                        if (authUiState.currentRole.canExport) {
-                            // Exporta las validadas del listado visible (respeta los filtros activos).
-                            ExportMenuButton(samples) { viewModel.showMessage(it) }
-                        }
-                        IconButton(onClick = onLogout) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = "Cerrar sesión",
-                                tint = AquaSurface
-                            )
+
+                        Box {
+                            IconButton(onClick = { showMoreMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "Más opciones",
+                                    tint = AquaSurface
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMoreMenu,
+                                onDismissRequest = { showMoreMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Dashboard") },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        onNavigateToDashboard()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Comparar períodos") },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        onNavigateToCompare()
+                                    }
+                                )
+                                if (authUiState.currentRole.canExport) {
+                                    DropdownMenuItem(
+                                        text = { Text("Exportar PDF (validadas)") },
+                                        onClick = {
+                                            showMoreMenu = false
+                                            if (ReportRows.validated(samples).isEmpty()) {
+                                                viewModel.showMessage("No hay muestras validadas para exportar. Solo se exportan las validadas por el supervisor.")
+                                            } else {
+                                                scope.launch {
+                                                    try {
+                                                        val intent = ReportExporter(context).export(samples, ReportFormat.PDF)
+                                                        context.startActivity(intent)
+                                                    } catch (e: Exception) {
+                                                        viewModel.showMessage("No se pudo generar el reporte. Reintenta.")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Exportar CSV / Excel (validadas)") },
+                                        onClick = {
+                                            showMoreMenu = false
+                                            if (ReportRows.validated(samples).isEmpty()) {
+                                                viewModel.showMessage("No hay muestras validadas para exportar. Solo se exportan las validadas por el supervisor.")
+                                            } else {
+                                                scope.launch {
+                                                    try {
+                                                        val intent = ReportExporter(context).export(samples, ReportFormat.CSV)
+                                                        context.startActivity(intent)
+                                                    } catch (e: Exception) {
+                                                        viewModel.showMessage("No se pudo generar el reporte. Reintenta.")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Accesibilidad") },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        onNavigateToDeveloperOptions()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Cerrar sesión") },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        showLogoutDialog = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -196,7 +293,7 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(12.dp))
-            com.aldemar.aquasample.ui.components.MarineConditionsCard()
+            MarineConditionsCard()
             Spacer(modifier = Modifier.height(8.dp))
 
             // Buscador en tiempo real
@@ -322,7 +419,7 @@ fun HomeScreen(
             if (listState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.padding(24.dp))
             } else if (listState.error != null) {
-                Text(listState.error.orEmpty(), color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                Text(listState.error.orEmpty(), color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = viewModel::retryLoad) { Text("Reintentar") }
             } else if (samples.isEmpty()) {
                 Box(

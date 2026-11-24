@@ -38,11 +38,7 @@ class AuthViewModel(
     val uiState = _uiState.asStateFlow()
 
     init {
-        if (demoEnabled && savedState.get<Boolean>("demo") == true) {
-            _uiState.value = AuthUiState(isLoggedIn = true, isDemo = true,
-                currentUserName = savedState["demoName"] ?: "Demostración",
-                currentRole = UserRole.fromName(savedState.get<String>("demoRole")))
-        } else viewModelScope.launch {
+        viewModelScope.launch {
             try {
                 _uiState.value = repository.restore()?.toState() ?: AuthUiState()
             } catch (e: CancellationException) { throw e

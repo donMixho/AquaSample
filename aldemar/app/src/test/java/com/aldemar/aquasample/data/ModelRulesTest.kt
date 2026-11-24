@@ -1,5 +1,6 @@
 package com.aldemar.aquasample.data
 
+import com.aldemar.aquasample.data.local.accessibility.FontSizeScale
 import com.aldemar.aquasample.data.model.SampleStatus
 import com.aldemar.aquasample.data.model.UserRole
 import com.aldemar.aquasample.data.repository.RolePolicy
@@ -27,6 +28,15 @@ class ModelRulesTest {
     @Test fun trustedClaimGrantsAnalystOnlyOnExactMatch() {
         assertEquals(UserRole.ANALYST, RolePolicy.fromClaims(mapOf("role" to "ANALYST")))
         assertEquals(UserRole.OPERATOR, RolePolicy.fromClaims(mapOf("role" to "analyst")))
+    }
+    @Test fun specificEmailsMapToCorrectRoles() {
+        assertEquals(UserRole.SUPERVISOR, RolePolicy.fromClaims(emptyMap(), "anto.supervisor@aldemar.cl"))
+        assertEquals(UserRole.SUPERVISOR, RolePolicy.fromClaims(emptyMap(), "ANTO.RIVAS@DUOCUC.CL"))
+        assertEquals(UserRole.ANALYST, RolePolicy.fromClaims(emptyMap(), "analista@aldemar.cl"))
+    }
+    @Test fun fontSizeScaleSmallExists() {
+        assertNotNull(FontSizeScale.fromName("SMALL"))
+        assertEquals(0.85f, FontSizeScale.SMALL.scale)
     }
     @Test fun legacyStatusNamesMapToNewReviewStates() {
         assertEquals(SampleStatus.PENDIENTE_REVISION, SampleStatus.fromString("PENDIENTE"))

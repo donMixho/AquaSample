@@ -19,6 +19,7 @@ import com.aldemar.aquasample.data.repository.SampleRepository
 import com.aldemar.aquasample.ui.screens.developer.DeveloperOptionsScreen
 import com.aldemar.aquasample.ui.screens.home.HomeScreen
 import com.aldemar.aquasample.ui.screens.login.LoginScreen
+import com.aldemar.aquasample.ui.screens.login.DemoLoginScreen
 import com.aldemar.aquasample.ui.screens.review.SupervisorReviewScreen
 import com.aldemar.aquasample.ui.screens.sample.CountObservationsScreen
 import com.aldemar.aquasample.ui.screens.sample.NewSampleScreen
@@ -71,10 +72,10 @@ fun AquaNavigation(
     androidx.compose.runtime.LaunchedEffect(authUiState.isLoggedIn, authUiState.isLoading) {
         if (!authUiState.isLoading) {
             val route = navController.currentDestination?.route
-            if (authUiState.isLoggedIn && route == Screen.Login.route) {
+            if (authUiState.isLoggedIn && (route == Screen.Login.route || route == Screen.DemoLogin.route)) {
                 sampleCreateViewModel.setOperator(authUiState.currentUserName)
                 navController.navigate(Screen.Home.route) { popUpTo(Screen.Login.route) { inclusive = true } }
-            } else if (!authUiState.isLoggedIn && route != null && route != Screen.Login.route && route != Screen.DeveloperOptions.route) {
+            } else if (!authUiState.isLoggedIn && route != null && route != Screen.Login.route && route != Screen.DeveloperOptions.route && route != Screen.DemoLogin.route) {
                 navController.navigate(Screen.Login.route) { popUpTo(navController.graph.id) { inclusive = true } }
             }
         }
@@ -93,7 +94,20 @@ fun AquaNavigation(
                 authViewModel = authViewModel,
                 onNavigateToDeveloperOptions = {
                     navController.navigate(Screen.DeveloperOptions.route)
+                },
+                onNavigateToDemoLogin = {
+                    navController.navigate(Screen.DemoLogin.route)
                 }
+            )
+        }
+
+        // ==========================================
+        // 1.2. Pantalla de Login Demostración
+        // ==========================================
+        composable(Screen.DemoLogin.route) {
+            DemoLoginScreen(
+                authViewModel = authViewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -121,6 +135,7 @@ fun AquaNavigation(
                 },
                 onNavigateToDashboard = { navController.navigate(Screen.Dashboard.route) },
                 onNavigateToCompare = { navController.navigate(Screen.Compare.route) },
+                onNavigateToDeveloperOptions = { navController.navigate(Screen.DeveloperOptions.route) },
                 onNavigateToReview = { sampleId ->
                     navController.navigate(Screen.SupervisorReview.createRoute(sampleId))
                 },
@@ -142,14 +157,34 @@ fun AquaNavigation(
                 role = authUiState.currentRole,
                 viewModel = viewModel<AnalyticsViewModel>(key = "$mode-analytics", factory = factory),
                 onNavigateBack = { navController.popBackStack() },
-                onCompare = { navController.navigate(Screen.Compare.route) }
+                onNavigateToHome = { navController.popBackStack() },
+                onCompare = { navController.navigate(Screen.Compare.route) },
+                onNavigateToDeveloperOptions = { navController.navigate(Screen.DeveloperOptions.route) },
+                onLogout = {
+                    sampleCreateViewModel.reset()
+                    sampleListViewModel.clearFilters()
+                    authViewModel.logout()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
             )
         }
         composable(Screen.Compare.route) {
             if (!authUiState.isLoggedIn) return@composable
             ComparePeriodsScreen(
                 viewModel = viewModel<AnalyticsViewModel>(key = "$mode-analytics", factory = factory),
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDashboard = { navController.navigate(Screen.Dashboard.route) },
+                onNavigateToDeveloperOptions = { navController.navigate(Screen.DeveloperOptions.route) },
+                onLogout = {
+                    sampleCreateViewModel.reset()
+                    sampleListViewModel.clearFilters()
+                    authViewModel.logout()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                }
             )
         }
 

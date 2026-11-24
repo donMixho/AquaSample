@@ -1,7 +1,10 @@
 package com.aldemar.aquasample.ui.screens.dashboard
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -13,9 +16,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -24,8 +35,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -33,27 +46,56 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aldemar.aquasample.data.export.ReportExporter
+import com.aldemar.aquasample.data.export.ReportFormat
+import com.aldemar.aquasample.data.export.ReportRows
 import com.aldemar.aquasample.data.model.UserRole
 import com.aldemar.aquasample.ui.components.AquaTopBar
-import com.aldemar.aquasample.ui.components.ExportMenuButton
 import com.aldemar.aquasample.ui.components.FilterDropdown
+import com.aldemar.aquasample.ui.components.LogoutConfirmationDialog
 import com.aldemar.aquasample.ui.theme.*
 import com.aldemar.aquasample.ui.viewmodel.AnalyticsViewModel
 import com.aldemar.aquasample.ui.viewmodel.DashboardMetrics
 import com.aldemar.aquasample.ui.viewmodel.HistoryAnalytics
 import com.aldemar.aquasample.ui.viewmodel.SampleFormat
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
-fun DashboardScreen(role: UserRole, viewModel: AnalyticsViewModel, onNavigateBack: () -> Unit, onCompare: () -> Unit) {
+fun DashboardScreen(
+    role: UserRole,
+    viewModel: AnalyticsViewModel,
+    onNavigateBack: () -> Unit,
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToCompare: () -> Unit = {},
+    onNavigateToDeveloperOptions: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    onCompare: () -> Unit = {}
+) {
     val samples by viewModel.samples.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var message by remember { mutableStateOf<String?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); message = null } }
+
+    if (showLogoutDialog) {
+        LogoutConfirmationDialog(
+            onConfirm = {
+                showLogoutDialog = false
+                onLogout()
+            },
+            onDismiss = { showLogoutDialog = false }
+        )
+    }
 
     val kpis = remember(samples) { DashboardMetrics.kpis(samples) }
     val bars = remember(samples) { DashboardMetrics.byCenter(samples) }
@@ -65,20 +107,73 @@ fun DashboardScreen(role: UserRole, viewModel: AnalyticsViewModel, onNavigateBac
     Scaffold(
         snackbarHost = {
             SnackbarHost(snackbar) { data ->
-                androidx.compose.material3.Snackbar(
-                    containerColor = com.aldemar.aquasample.ui.theme.AquaPrimary,
-                    contentColor = com.aldemar.aquasample.ui.theme.AquaSurface,
-                    actionContentColor = com.aldemar.aquasample.ui.theme.AquaSurface,
-                    dismissActionContentColor = com.aldemar.aquasample.ui.theme.AquaSurface
+                Snackbar(
+                    containerColor = AquaPrimary,
+                    contentColor = AquaSurface,
+                    actionContentColor = AquaSurface,
+                    dismissActionContentColor = AquaSurface
                 ) {
-                    Text(data.visuals.message, color = com.aldemar.aquasample.ui.theme.AquaSurface)
+                    Text(data.visuals.message, color = AquaSurface)
                 }
             }
         },
         topBar = {
-            AquaTopBar(title = "Dashboard", canNavigateBack = true, onNavigateBack = onNavigateBack, actions = {
-                if (role.canExport) ExportMenuButton(samples) { message = it }
-            })
+            AquaTopBar(
+                title = "Dashboard",
+                canNavigateBack = true,
+                onNavigateBack = onNavigateBack,
+                actions = {
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = AquaSurface)
+                        }
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(text = { Text("Inicio / Historial") }, onClick = { showMenu = false; onNavigateToHome() })
+                            DropdownMenuItem(text = { Text("Comparar períodos") }, onClick = { showMenu = false; onNavigateToCompare() })
+                            if (role.canExport) {
+                                DropdownMenuItem(
+                                    text = { Text("Exportar PDF (validadas)") },
+                                    onClick = {
+                                        showMenu = false
+                                        if (ReportRows.validated(samples).isEmpty()) {
+                                            message = "No hay muestras validadas para exportar."
+                                        } else {
+                                            scope.launch {
+                                                try {
+                                                    val intent = ReportExporter(context).export(samples, ReportFormat.PDF)
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    message = "No se pudo generar el reporte."
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Exportar CSV / Excel (validadas)") },
+                                    onClick = {
+                                        showMenu = false
+                                        if (ReportRows.validated(samples).isEmpty()) {
+                                            message = "No hay muestras validadas para exportar."
+                                        } else {
+                                            scope.launch {
+                                                try {
+                                                    val intent = ReportExporter(context).export(samples, ReportFormat.CSV)
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    message = "No se pudo generar el reporte."
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                            DropdownMenuItem(text = { Text("Accesibilidad") }, onClick = { showMenu = false; onNavigateToDeveloperOptions() })
+                            DropdownMenuItem(text = { Text("Cerrar sesión") }, onClick = { showMenu = false; showLogoutDialog = true })
+                        }
+                    }
+                }
+            )
         },
         containerColor = AquaBackground
     ) { padding ->
@@ -120,7 +215,7 @@ fun DashboardScreen(role: UserRole, viewModel: AnalyticsViewModel, onNavigateBac
                     )
                 }
             }
-            androidx.compose.material3.OutlinedButton(onClick = onCompare, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = onCompare, modifier = Modifier.fillMaxWidth()) {
                 Text("Comparar períodos de una línea")
             }
         }
@@ -160,7 +255,7 @@ private fun ChartCard(title: String, content: @Composable () -> Unit) {
 /** Barra horizontal dibujada en Canvas con su valor a la derecha. */
 @Composable
 private fun BarRow(label: String, value: Int, fraction: Float, color: Color) {
-    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, fontSize = 11.sp, color = AquaTextSecondary, modifier = Modifier.padding(end = 0.dp).fillMaxWidth(0.22f))
         Canvas(Modifier.weight(1f).height(12.dp)) {
             val r = CornerRadius(6.dp.toPx())

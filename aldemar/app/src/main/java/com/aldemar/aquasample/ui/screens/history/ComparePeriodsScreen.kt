@@ -1,6 +1,7 @@
 package com.aldemar.aquasample.ui.screens.history
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,8 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aldemar.aquasample.ui.components.AquaTopBar
 import com.aldemar.aquasample.ui.components.DateField
 import com.aldemar.aquasample.ui.components.FilterDropdown
+import com.aldemar.aquasample.ui.components.LogoutConfirmationDialog
 import com.aldemar.aquasample.ui.theme.*
 import com.aldemar.aquasample.ui.viewmodel.AnalyticsViewModel
 import com.aldemar.aquasample.ui.viewmodel.HistoryAnalytics
@@ -33,7 +41,13 @@ import java.util.Locale
 
 /** Compara dos rangos de fechas de una misma línea (individuos y densidad ind/cm). */
 @Composable
-fun ComparePeriodsScreen(viewModel: AnalyticsViewModel, onNavigateBack: () -> Unit) {
+fun ComparePeriodsScreen(
+    viewModel: AnalyticsViewModel,
+    onNavigateBack: () -> Unit,
+    onNavigateToDashboard: () -> Unit = {},
+    onNavigateToDeveloperOptions: () -> Unit = {},
+    onLogout: () -> Unit = {}
+) {
     val samples by viewModel.samples.collectAsStateWithLifecycle()
     val lines = remember(samples) { HistoryAnalytics.lines(samples) }
     var label by rememberSaveable { mutableStateOf<String?>(null) }
@@ -41,6 +55,19 @@ fun ComparePeriodsScreen(viewModel: AnalyticsViewModel, onNavigateBack: () -> Un
     var aEnd by rememberSaveable { mutableStateOf<Long?>(null) }
     var bStart by rememberSaveable { mutableStateOf<Long?>(null) }
     var bEnd by rememberSaveable { mutableStateOf<Long?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        LogoutConfirmationDialog(
+            onConfirm = {
+                showLogoutDialog = false
+                onLogout()
+            },
+            onDismiss = { showLogoutDialog = false }
+        )
+    }
+
     val line = lines.firstOrNull { it.label == label } ?: lines.firstOrNull()
     val lineSamples = remember(samples, line) { line?.let { HistoryAnalytics.forLine(samples, it) }.orEmpty() }
     val rangesSet = (aStart != null || aEnd != null) && (bStart != null || bEnd != null)
@@ -49,7 +76,26 @@ fun ComparePeriodsScreen(viewModel: AnalyticsViewModel, onNavigateBack: () -> Un
     val result = if (rangesSet) HistoryAnalytics.compare(a, b) else null
 
     Scaffold(
-        topBar = { AquaTopBar("Comparar períodos", canNavigateBack = true, onNavigateBack = onNavigateBack) },
+        topBar = {
+            AquaTopBar(
+                title = "Comparar períodos",
+                canNavigateBack = true,
+                onNavigateBack = onNavigateBack,
+                actions = {
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Más opciones", tint = AquaSurface)
+                        }
+                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                            DropdownMenuItem(text = { Text("Inicio / Historial") }, onClick = { showMenu = false; onNavigateBack() })
+                            DropdownMenuItem(text = { Text("Dashboard") }, onClick = { showMenu = false; onNavigateToDashboard() })
+                            DropdownMenuItem(text = { Text("Accesibilidad") }, onClick = { showMenu = false; onNavigateToDeveloperOptions() })
+                            DropdownMenuItem(text = { Text("Cerrar sesión") }, onClick = { showMenu = false; showLogoutDialog = true })
+                        }
+                    }
+                }
+            )
+        },
         containerColor = AquaBackground
     ) { padding ->
         Column(

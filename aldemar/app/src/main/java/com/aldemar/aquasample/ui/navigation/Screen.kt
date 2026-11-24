@@ -25,6 +25,7 @@ sealed class Screen(val route: String) {
     data object CountObservations : Screen("count_observations")
     data object SampleSummary : Screen("sample_summary")
     data object DeveloperOptions : Screen("developer_options")
+    data object DemoLogin : Screen("demo_login")
     data object SupervisorReview : Screen("supervisor_review/{sampleId}") {
         fun createRoute(sampleId: Long): String = "supervisor_review/$sampleId"
     }

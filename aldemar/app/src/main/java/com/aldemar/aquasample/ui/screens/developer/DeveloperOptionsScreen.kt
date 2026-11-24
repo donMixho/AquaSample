@@ -98,7 +98,7 @@ fun DeveloperOptionsScreen(
     Scaffold(
         topBar = {
             AquaTopBar(
-                title = "Opciones de Desarrollador",
+                title = "Accesibilidad",
                 canNavigateBack = true,
                 onNavigateBack = onNavigateBack
             )

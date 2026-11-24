@@ -43,6 +43,7 @@ enum class FontSizeScale(
     val label: String,
     val scale: Float
 ) {
+    SMALL("Pequeño (85%)", 0.85f),
     NORMAL("Normal (100%)", 1.0f),
     MEDIUM("Mediano (115%)", 1.15f),
     LARGE("Grande (130%)", 1.30f),
