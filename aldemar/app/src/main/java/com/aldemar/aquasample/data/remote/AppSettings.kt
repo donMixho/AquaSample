@@ -47,7 +47,7 @@ class AppSettings(private val context: Context) : MarineCache {
     }
 
     companion object {
-        const val DEFAULT_BACKEND_URL = "http://10.0.2.2:8080/api/"
+        const val DEFAULT_BACKEND_URL = "http://192.168.75.164:8080/api/"
         private val KEY_URL = stringPreferencesKey("backend_url")
         private val KEY_LAT = doublePreferencesKey("marine_lat")
         private val KEY_LON = doublePreferencesKey("marine_lon")

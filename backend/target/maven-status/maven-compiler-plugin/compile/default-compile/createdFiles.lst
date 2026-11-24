@@ -3,5 +3,6 @@ com\aldemar\aquasample\backend\SampleStatus.class
 com\aldemar\aquasample\backend\SampleRepository.class
 com\aldemar\aquasample\backend\SampleDto.class
 com\aldemar\aquasample\backend\SampleController.class
+com\aldemar\aquasample\backend\ApiSecurity.class
 com\aldemar\aquasample\backend\ReviewDto.class
 com\aldemar\aquasample\backend\BackendApplication.class

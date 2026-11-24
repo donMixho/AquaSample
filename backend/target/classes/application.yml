@@ -1,11 +1,11 @@
-# Perfil por defecto: H2 en memoria (arranca sin configuración externa).
+# Base local persistente; las pruebas usan una base en memoria independiente.
 server:
   port: 8080
 spring:
   application:
     name: aquasample-backend
   datasource:
-    url: jdbc:h2:mem:aquasample;DB_CLOSE_DELAY=-1
+    url: ${AQUASAMPLE_DB_URL:jdbc:h2:file:./data/aquasample}
     username: sa
     password:
   jpa:
@@ -14,7 +14,7 @@ spring:
     open-in-view: false
   h2:
     console:
-      enabled: true
+      enabled: false
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
