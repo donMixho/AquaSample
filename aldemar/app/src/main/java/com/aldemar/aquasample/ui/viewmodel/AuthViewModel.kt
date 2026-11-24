@@ -31,7 +31,8 @@ class AuthViewModel(
     private val repository: AuthRepository,
     private val demoEnabled: Boolean
 ) : ViewModel() {
-    constructor(savedState: SavedStateHandle) : this(savedState, FirebaseAuthRepository(), BuildConfig.DEBUG)
+    // La demostración usa una base Room separada y no concede permisos Firebase ni de backend.
+    constructor(savedState: SavedStateHandle) : this(savedState, FirebaseAuthRepository(), true)
 
     private val _uiState = MutableStateFlow(AuthUiState(isLoading = true))
     val uiState = _uiState.asStateFlow()

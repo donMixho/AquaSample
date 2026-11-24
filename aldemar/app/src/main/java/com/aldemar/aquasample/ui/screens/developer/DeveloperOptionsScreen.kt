@@ -77,20 +77,16 @@ import com.aldemar.aquasample.ui.theme.StatusAlertDark
 import com.aldemar.aquasample.ui.theme.StatusValidated
 import com.aldemar.aquasample.ui.viewmodel.AuthViewModel
 
-private const val DEVELOPER_PASSWORD = "@ldemar2026!"
-
 /**
  * Pantalla de Opciones de Desarrollador y Accesibilidad.
  *
  * Incluye:
- * - Autenticación por clave ("@ldemar2026!") para el panel de desarrollador.
  * - Ajuste persistente de tamaño de fuente (Normal, Mediano, Grande, Extra Grande).
  * - Selección persistente del modo de daltonismo (Deuteranomalía, Protanomalía, Deuteranopia, Protanopia, Tritanomalía, Tritanopia).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DeveloperOptionsScreen(
-    authViewModel: AuthViewModel,
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -98,24 +94,6 @@ fun DeveloperOptionsScreen(
     val accessibilityPrefs = app.accessibilityPreferences
     val accessibilityState by accessibilityPrefs.state.collectAsStateWithLifecycle()
     val activeAquaColors = LocalAquaColors.current
-
-    var passwordInput by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
-    var isUnlocked by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    // Configuración del perfil demo
-    var selectedRole by remember { mutableStateOf(UserRole.OPERATOR) }
-    var customName by remember { mutableStateOf(UserRole.OPERATOR.defaultUser) }
-
-    fun verifyPassword() {
-        if (passwordInput == DEVELOPER_PASSWORD) {
-            isUnlocked = true
-            errorMessage = null
-        } else {
-            errorMessage = "Contraseña de desarrollador incorrecta."
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -149,16 +127,16 @@ fun DeveloperOptionsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = if (isUnlocked) Icons.Default.CheckCircle else Icons.Default.DeveloperMode,
+                        imageVector = Icons.Default.Accessibility,
                         contentDescription = null,
-                        tint = if (isUnlocked) activeAquaColors.statusValidated else activeAquaColors.primary,
+                        tint = activeAquaColors.primary,
                         modifier = Modifier.size(64.dp)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = if (isUnlocked) "Panel de Desarrollador" else "Acceso Restringido",
+                        text = "Accesibilidad",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = activeAquaColors.primary
@@ -167,10 +145,7 @@ fun DeveloperOptionsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = if (isUnlocked)
-                            "Acceso concedido a las funciones de depuración, accesibilidad y modo demostración offline."
-                        else
-                            "Ingrese la contraseña corporativa de desarrollador para acceder.",
+                        text = "Ajusta el tamaño del texto y la paleta de colores según tus necesidades.",
                         fontSize = 13.sp,
                         color = AquaTextSecondary,
                         textAlign = TextAlign.Center
@@ -178,82 +153,9 @@ fun DeveloperOptionsScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    if (!isUnlocked) {
-                        // Campo de Contraseña
-                        OutlinedTextField(
-                            value = passwordInput,
-                            onValueChange = {
-                                passwordInput = it
-                                errorMessage = null
-                            },
-                            label = { Text("Contraseña de Desarrollador") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = activeAquaColors.primary
-                                )
-                            },
-                            trailingIcon = {
-                                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                                    Icon(
-                                        imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = "Mostrar u ocultar contraseña"
-                                    )
-                                }
-                            },
-                            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            singleLine = true,
-                            isError = errorMessage != null,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Password,
-                                imeAction = ImeAction.Done
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = { verifyPassword() }
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = AquaSecondary,
-                                focusedLabelColor = activeAquaColors.primary,
-                                unfocusedBorderColor = AquaOutline,
-                                errorBorderColor = StatusAlertDark
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-
-                        if (errorMessage != null) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = errorMessage!!,
-                                fontSize = 12.sp,
-                                color = StatusAlertDark,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        Button(
-                            onClick = { verifyPassword() },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = activeAquaColors.primary)
-                        ) {
-                            Text(
-                                text = "Desbloquear Opciones",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AquaSurface
-                            )
-                        }
-                    } else {
-                        // ==========================================
-                        // SECCIÓN DE ACCESIBILIDAD VISUAL
-                        // ==========================================
+                    // ==========================================
+                    // SECCIÓN DE ACCESIBILIDAD VISUAL
+                    // ==========================================
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
@@ -433,110 +335,6 @@ fun DeveloperOptionsScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(28.dp))
-
-                        // ==========================================
-                        // SECCIÓN MODO DEMOSTRACIÓN
-                        // ==========================================
-                        Text(
-                            text = "Perfil para Demostración Offline",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AquaTextPrimary,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            FilterChip(
-                                selected = selectedRole == UserRole.OPERATOR,
-                                onClick = {
-                                    selectedRole = UserRole.OPERATOR
-                                    customName = UserRole.OPERATOR.defaultUser
-                                },
-                                label = { Text("Operador") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Engineering,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = activeAquaColors.primary,
-                                    selectedLabelColor = AquaSurface,
-                                    selectedLeadingIconColor = AquaSurface
-                                ),
-                                modifier = Modifier.weight(1f)
-                            )
-
-                            FilterChip(
-                                selected = selectedRole == UserRole.SUPERVISOR,
-                                onClick = {
-                                    selectedRole = UserRole.SUPERVISOR
-                                    customName = UserRole.SUPERVISOR.defaultUser
-                                },
-                                label = { Text("Supervisor") },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.SupervisorAccount,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = activeAquaColors.primary,
-                                    selectedLabelColor = AquaSurface,
-                                    selectedLeadingIconColor = AquaSurface
-                                ),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = customName,
-                            onValueChange = { customName = it },
-                            label = { Text("Nombre del Profesional Demo") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = AquaSecondary,
-                                focusedLabelColor = activeAquaColors.primary,
-                                unfocusedBorderColor = AquaOutline
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Botón de Demostración Offline
-                        Button(
-                            onClick = {
-                                authViewModel.loginDemo(
-                                    role = selectedRole,
-                                    customName = customName
-                                )
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = activeAquaColors.primary)
-                        ) {
-                            Text(
-                                text = "Ingresar en Modo Demostración (Offline)",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AquaSurface
-                            )
-                        }
-                    }
                 }
             }
         }

@@ -102,7 +102,6 @@ fun AquaNavigation(
         // ==========================================
         composable(Screen.DeveloperOptions.route) {
             DeveloperOptionsScreen(
-                authViewModel = authViewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
